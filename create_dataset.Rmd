@@ -1,0 +1,900 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.13.7
+  kernelspec:
+    display_name: Python 3 (ipykernel)
+    language: python
+    name: python3
+---
+
+# Settings
+
+```{python}
+# Desired percentage of NIL mentions
+perc_nil = 0.1
+
+# Number of batch to create
+n_batch = 10
+
+# Desired NIL mentions per batch (in dev and test)
+desired_nil = 50
+
+# Desired size of a single dev and test batch
+dev_test_desired_batch_size = 10000
+
+# Random state
+random_state = 1234
+
+# Output dir
+outdir = 'incremental_dataset'
+```
+
+# Imports
+
+```{python}
+import pandas as pd
+from tqdm import tqdm,trange
+from glob import glob
+import numpy as np
+from sklearn.model_selection import StratifiedKFold
+import os
+import json
+```
+
+# Download
+
+
+Download the original dataset from https://github.com/yasumasaonoe/ET4EL
+
+
+# Extract it
+
+
+```
+tar -xzf unseen_mentions.tar.gz
+```
+
+You should be able to see a folder named `unseen_mentions` with the following content:
+```
+unseen_mentions/
+unseen_mentions/dev.json
+unseen_mentions/test.json
+unseen_mentions/train
+unseen_mentions/train/train_2.json
+unseen_mentions/train/train_1.json
+unseen_mentions/train/train_4.json
+unseen_mentions/train/train_3.json
+unseen_mentions/train/train_5.json
+unseen_mentions/train/train_0.json
+```
+
+
+# Load Original Dataset
+
+```{python}
+train_files = glob('unseen_mentions/train/*.json')
+train_files.sort()
+train_files
+```
+
+```{python}
+train_df = pd.DataFrame()
+for file in tqdm(train_files):
+    _temp = pd.read_json(file, lines=True)
+    print(file, 'shape: ', _temp.shape)
+    train_df = pd.concat([train_df, _temp], ignore_index=True)
+```
+
+```{python}
+dev_df = pd.read_json('unseen_mentions/dev.json', lines=True)
+```
+
+```{python}
+test_df = pd.read_json('unseen_mentions/test.json', lines=True)
+```
+
+# Proceed
+
+
+### Calculate the absolute frequency with which each entity is mentioned
+
+```{python}
+mention_frequency = train_df.groupby('wikiId').size()
+```
+
+```{python}
+mention_frequency
+```
+
+```{python}
+freq_df = pd.DataFrame(mention_frequency)
+freq_df.columns = ['freq']
+freq_df.shape
+```
+
+```{python}
+freq_df.head()
+```
+
+```{python}
+# calculate the mean frequency with which all the entities are mentioned
+mu_freq = np.mean(freq_df['freq'])
+mu_freq
+
+# calculate the median frequency with which all the entities are mentioned
+med_freq = np.median(freq_df['freq'])
+med_freq
+```
+
+Calculate the probability that each entity is NIL
+
+```{python}
+np.random.seed(random_state)
+
+freq_df['p_formula'] = perc_nil ** (freq_df['freq'] / med_freq)
+s = np.random.uniform(0, 1, freq_df.shape[0])
+freq_df['p_uniform'] = s
+freq_df.head()
+```
+
+```{python}
+freq_df['NIL'] = freq_df['p_uniform'] < freq_df['p_formula']
+freq_df.head()
+```
+
+```{python}
+print('N# NIL:', freq_df.eval('NIL').sum(), 'percentage:', freq_df.eval('NIL').sum() / freq_df.shape[0] * 100, '%')
+```
+
+```{python}
+#Imposto la frequenza dei NIL = 0 in modo che poi quando farò la suddivisione in batch stratificata ci sia anche proporzionale tra i 
+#NIL in ogni batch
+freq_df.loc[freq_df['NIL'] == True, 'freq'] = 0
+```
+
+```{python}
+train_df
+```
+
+```{python}
+train_df_merged = train_df.join(freq_df, how='left', on='wikiId')
+```
+
+```{python}
+print('Percentage of NIL mentions in train:', train_df_merged.eval('NIL').sum() / train_df_merged.shape[0] * 100)
+```
+
+# Propagate NIL mentions in test and dev
+
+```{python}
+dev_df_merged = dev_df.join(freq_df, how='left', on='wikiId')
+```
+
+```{python}
+dev_df_merged['p_formula'] = dev_df_merged['p_formula'].fillna(-1)
+dev_df_merged['p_uniform'] = dev_df_merged['p_uniform'].fillna(-1)
+dev_df_merged['freq'] = dev_df_merged['freq'].fillna(-1)
+dev_df_merged['NIL'] = dev_df_merged['NIL'].fillna(False)
+```
+
+```{python}
+assert not dev_df_merged['NIL'].isna().any()
+```
+
+```{python}
+print('dev NIL N#:', dev_df_merged.eval('NIL').sum(), 'Percentage:', dev_df_merged.eval('NIL').sum() / dev_df_merged.shape[0] * 100)
+```
+
+```{python}
+test_df_merged = test_df.join(freq_df, how='left', on='wikiId')
+```
+
+```{python}
+test_df_merged['p_formula'] = test_df_merged['p_formula'].fillna(-1)
+test_df_merged['p_uniform'] = test_df_merged['p_uniform'].fillna(-1)
+test_df_merged['freq'] = test_df_merged['freq'].fillna(-1)
+test_df_merged['NIL'] = test_df_merged['NIL'].fillna(False)
+```
+
+```{python}
+assert not test_df_merged['NIL'].isna().any()
+```
+
+```{python}
+print('test NIL N#:', test_df_merged.eval('NIL').sum(), 'Percentage:', test_df_merged.eval('NIL').sum() / test_df_merged.shape[0] * 100)
+```
+
+# Transplant
+
+```{python}
+# I want 500 NIL in dev and test
+# I want 100k total in both dev and test
+```
+
+```{python}
+train_unique = train_df[['word', 'wikiId']].drop_duplicates(keep='first')
+```
+
+```{python}
+dev_unique = dev_df[['word', 'wikiId']].drop_duplicates(keep='first')
+```
+
+```{python}
+test_unique = test_df[['word', 'wikiId']].drop_duplicates(keep='first')
+```
+
+```{python}
+# ensure no duplicates
+assert not train_unique.duplicated().any()
+assert not dev_unique.duplicated().any()
+assert not test_unique.duplicated().any()
+```
+
+```{python}
+# ensure unseen mentions holds
+assert not pd.concat([train_unique, dev_unique]).duplicated().any()
+assert not pd.concat([train_unique, test_unique]).duplicated().any()
+assert not pd.concat([dev_unique, test_unique]).duplicated().any()
+```
+
+## NIL
+
+```{python}
+# prendo n menzioni NIL dal train che non siano nel dev/test e ce le metto
+```
+
+```{python}
+train_df_nil = train_df_merged.query('NIL')
+```
+
+```{python}
+desired_nil_total = desired_nil * n_batch
+nil_to_add_dev = desired_nil_total - dev_df_merged.eval('NIL').sum()
+nil_to_add_dev
+```
+
+```{python}
+nil_to_add_test = desired_nil_total - test_df_merged.eval('NIL').sum()
+nil_to_add_test
+```
+
+```{python}
+# TODO remove
+def get_sample_with_sum(df, sum_, random_state):
+    """
+    Gets a sample which sums to sum_
+    """
+    #print(sum_, 'left')
+    if sum_ == 0:
+        # end of recursion
+        return []
+    if sum_ < 0:
+        # cannot find subset
+        raise Exception('Received negative sum.')
+
+    # check there exists a sample < sum_
+    assert (df['count'] <= sum_).any()
+    current_sum = 0
+    
+    # filter df to contain only items < sum_
+    df = df[df['count'] <= sum_]
+    recursive_result = None
+    item = None
+
+    """
+    If we pick an item with which is impossible to reach sum_:
+    pick another item
+    """
+    while recursive_result is None:
+        if df.shape[0] == 0:
+            # cannot find a subset
+            print('return [] cannot')
+            return None
+
+        # pick an item
+        item = df.sample(n=1, random_state=random_state)
+        item_number = item['count'].values[0]
+        random_state += 1
+        
+       #print('found', item_number, 'at', sum_)
+
+        remainder = sum_ - item_number
+        
+        # get a subset which sums to remainder
+        # we pass df without the item just extracted
+        recursive_result = get_sample_with_sum(df.drop(item.index), remainder, random_state)
+        
+        if recursive_result is None:
+            # cannot find subset with this item: discard item
+            df = df.drop(item.index)
+    
+    return item.index.union(recursive_result)
+```
+
+```{python}
+def get_subset_sum_ge(df, sum_, random_state):
+    """
+    Gets a subset whose sum is greater than sum_
+    """
+    
+    #print(sum_)
+    
+    if df.shape[0] == 0:
+        return None
+    
+    # get a sample
+    item = df.sample(n=1, random_state=random_state)
+    random_state += 1
+    df = df.drop(item.index) # remove just extracted item
+    
+    subset = item.index
+
+    current_sum = item['count'].values[0]
+    while current_sum < sum_:
+        print(f'\r{current_sum}/{sum_}',end='')
+        # get a sample
+        item = df.sample(n=1, random_state=random_state)
+        random_state += 1
+        df = df.drop(item.index) # remove just extracted item
+
+        current_sum += item['count'].values[0]
+        
+        subset = subset.union(item.index)
+    print()
+    return subset
+```
+
+```{python}
+train_df_nil_unique_count = pd.DataFrame(
+    train_df_nil[['wikiId', 'word']].value_counts(), columns=['count']).reset_index()
+train_df_nil_unique_count.head()
+```
+
+```{python}
+sample_transplant_to_dev = get_subset_sum_ge(train_df_nil_unique_count, nil_to_add_dev, random_state)
+print(train_df_nil_unique_count.loc[sample_transplant_to_dev]['count'].sum(), '>=', nil_to_add_dev)
+assert train_df_nil_unique_count.loc[sample_transplant_to_dev]['count'].sum() >= nil_to_add_dev
+```
+
+```{python}
+# remove sample_transplant to dev before extracting a sample for test
+train_df_nil_unique_count_no_dev = train_df_nil_unique_count.drop(sample_transplant_to_dev)
+sample_transplant_to_test = get_subset_sum_ge(train_df_nil_unique_count_no_dev, nil_to_add_test, random_state+10)
+print(train_df_nil_unique_count_no_dev.loc[sample_transplant_to_test]['count'].sum(), '>=', nil_to_add_test)
+assert train_df_nil_unique_count_no_dev.loc[sample_transplant_to_test]['count'].sum() >= nil_to_add_test
+```
+
+## Transplant NIL to dev and test
+
+
+### Dev
+
+```{python}
+mentions_to_dev = train_df_nil.join(
+    train_df_nil_unique_count.loc[sample_transplant_to_dev].set_index(['wikiId', 'word']),
+    on=['wikiId', 'word'], how='inner')
+mentions_to_dev = mentions_to_dev.drop(columns=['count'])
+```
+
+```{python}
+dev_df_transplant = pd.concat([dev_df_merged, mentions_to_dev], ignore_index=True)
+dev_df_transplant = dev_df_transplant.sample(frac=1, random_state=random_state) # randomize
+```
+
+```{python}
+dev_df_transplant.shape
+```
+
+```{python}
+print(dev_df_transplant.eval('NIL').sum(), '>=', desired_nil_total)
+assert dev_df_transplant.eval('NIL').sum() >= desired_nil_total
+```
+
+### Test
+
+```{python}
+mentions_to_test = train_df_nil.join(
+    train_df_nil_unique_count.loc[sample_transplant_to_test].set_index(['wikiId', 'word']),
+    on=['wikiId', 'word'], how='inner')
+mentions_to_test = mentions_to_test.drop(columns=['count'])
+```
+
+```{python}
+test_df_transplant = pd.concat([test_df_merged, mentions_to_test], ignore_index=True)
+test_df_transplant = test_df_transplant.sample(frac=1, random_state=random_state) # randomize
+```
+
+```{python}
+test_df_transplant.shape
+```
+
+```{python}
+print(test_df_transplant.eval('NIL').sum(), '>=', desired_nil_total)
+assert test_df_transplant.eval('NIL').sum() >= desired_nil_total
+```
+
+### Remove from train
+
+```{python}
+train_df_transplant = train_df_merged.drop(mentions_to_dev.index.union(mentions_to_test.index))
+```
+
+```{python}
+train_unique_transplant = train_df_transplant[['word', 'wikiId']].drop_duplicates(keep='first')
+```
+
+```{python}
+dev_unique_transplant = dev_df_transplant[['word', 'wikiId']].drop_duplicates(keep='first')
+```
+
+```{python}
+test_unique_transplant = test_df_transplant[['word', 'wikiId']].drop_duplicates(keep='first')
+```
+
+```{python}
+# ensure no duplicates
+assert not train_unique_transplant.duplicated().any()
+assert not dev_unique_transplant.duplicated().any()
+assert not test_unique_transplant.duplicated().any()
+```
+
+```{python}
+# ensure unseen mentions holds
+assert not pd.concat([train_unique_transplant, dev_unique_transplant]).duplicated().any()
+assert not pd.concat([train_unique_transplant, test_unique_transplant]).duplicated().any()
+assert not pd.concat([dev_unique_transplant, test_unique_transplant]).duplicated().any()
+```
+
+```{python}
+print('Train', train_df_transplant.shape)
+print('Dev', dev_df_transplant.shape)
+print('Test', test_df_transplant.shape)
+```
+
+# Transplant not-NIL mentions
+
+```{python}
+# prendo n menzioni NIL dal train che non siano nel dev/test e ce le metto
+```
+
+```{python}
+train_df_not_nil = train_df_merged.query('~NIL')
+```
+
+```{python}
+desired_total = dev_test_desired_batch_size * n_batch
+```
+
+```{python}
+not_nil_to_add_dev = desired_total - dev_df_transplant.shape[0]
+not_nil_to_add_dev
+```
+
+```{python}
+not_nil_to_add_test = desired_total - test_df_transplant.shape[0]
+not_nil_to_add_test
+```
+
+```{python}
+train_df_not_nil_unique_count = pd.DataFrame(
+    train_df_not_nil[['wikiId', 'word']].value_counts(), columns=['count']).reset_index()
+train_df_not_nil_unique_count.head()
+```
+
+```{python}
+sample_transplant_to_dev_not_nil = get_subset_sum_ge(train_df_not_nil_unique_count, not_nil_to_add_dev, random_state)
+```
+
+```{python}
+print(train_df_not_nil_unique_count.loc[sample_transplant_to_dev_not_nil]['count'].sum(), ">=", not_nil_to_add_dev)
+assert train_df_not_nil_unique_count.loc[sample_transplant_to_dev_not_nil]['count'].sum() >= not_nil_to_add_dev
+```
+
+```{python}
+# remove sample_transplant to dev before extracting a sample for test
+train_df_not_nil_unique_count_no_dev = train_df_not_nil_unique_count.drop(sample_transplant_to_dev_not_nil)
+sample_transplant_to_test_not_nil = get_subset_sum_ge(train_df_not_nil_unique_count_no_dev, not_nil_to_add_test, random_state+10)
+```
+
+```{python}
+print(train_df_not_nil_unique_count_no_dev.loc[sample_transplant_to_test_not_nil]['count'].sum(), ">=", not_nil_to_add_test)
+assert train_df_not_nil_unique_count_no_dev.loc[sample_transplant_to_test_not_nil]['count'].sum() >= not_nil_to_add_test
+```
+
+### Dev
+
+```{python}
+# TODO variable name collision with NIL transplant
+mentions_to_dev_not_nil = train_df_not_nil.join(
+    train_df_not_nil_unique_count.loc[sample_transplant_to_dev_not_nil].set_index(['wikiId', 'word']),
+    on=['wikiId', 'word'], how='inner')
+mentions_to_dev_not_nil = mentions_to_dev_not_nil.drop(columns=['count'])
+```
+
+```{python}
+assert not mentions_to_dev_not_nil.eval('NIL').any()
+```
+
+```{python}
+dev_df_transplant_final = pd.concat([dev_df_transplant, mentions_to_dev_not_nil], ignore_index=True)
+dev_df_transplant_final = dev_df_transplant_final.sample(frac=1, random_state=random_state) # randomize
+```
+
+```{python}
+dev_df_transplant_final.shape
+```
+
+```{python}
+assert dev_df_transplant_final.eval('NIL').sum() >= desired_nil_total
+assert dev_df_transplant_final.shape[0] >= desired_total
+```
+
+### Test
+
+```{python}
+mentions_to_test_not_nil = train_df_not_nil.join(
+    train_df_not_nil_unique_count.loc[sample_transplant_to_test_not_nil].set_index(['wikiId', 'word']),
+    on=['wikiId', 'word'], how='inner')
+mentions_to_test_not_nil = mentions_to_test_not_nil.drop(columns=['count'])
+```
+
+```{python}
+test_df_transplant_final = pd.concat([test_df_transplant, mentions_to_test_not_nil], ignore_index=True)
+test_df_transplant_final = test_df_transplant_final.sample(frac=1, random_state=random_state) # randomize
+```
+
+```{python}
+test_df_transplant_final.shape
+```
+
+```{python}
+assert test_df_transplant_final.eval('NIL').sum() >= desired_nil_total
+assert test_df_transplant_final.shape[0] >= desired_total
+```
+
+### Remove from train
+
+```{python}
+train_df_transplant_final = train_df_transplant.drop(mentions_to_dev_not_nil.index.union(mentions_to_test_not_nil.index))
+```
+
+```{python}
+train_unique_transplant_final = train_df_transplant_final[['word', 'wikiId']].drop_duplicates(keep='first')
+```
+
+```{python}
+dev_unique_transplant_final = dev_df_transplant_final[['word', 'wikiId']].drop_duplicates(keep='first')
+```
+
+```{python}
+test_unique_transplant_final = test_df_transplant_final[['word', 'wikiId']].drop_duplicates(keep='first')
+```
+
+```{python}
+# ensure no duplicates
+assert not train_unique_transplant_final.duplicated().any()
+assert not dev_unique_transplant_final.duplicated().any()
+assert not test_unique_transplant_final.duplicated().any()
+```
+
+```{python}
+# ensure unseen mentions holds
+assert not pd.concat([train_unique_transplant_final, dev_unique_transplant_final]).duplicated().any()
+assert not pd.concat([train_unique_transplant_final, test_unique_transplant_final]).duplicated().any()
+assert not pd.concat([dev_unique_transplant_final, test_unique_transplant_final]).duplicated().any()
+```
+
+```{python}
+print('Train', train_df_transplant_final.shape)
+print('Dev', dev_df_transplant_final.shape)
+print('Test', test_df_transplant_final.shape)
+```
+
+# Remove samples from dev test to reach the desired number
+
+```{python}
+# TODO eventually
+```
+
+# Divide train in batches
+
+```{python}
+skf = StratifiedKFold(n_splits=n_batch, shuffle=True, random_state=random_state)
+```
+
+## Train
+
+```{python}
+train_df_transplant_final = train_df_transplant_final.reset_index(drop=True)
+```
+
+```{python}
+train_batch_indexes = []
+# the NIL class has freq = 0 so it is fairly distributed among the batches
+for _, _index in skf.split(np.zeros(train_df_transplant_final.shape[0]), train_df_transplant_final['freq']):
+    train_batch_indexes.append(_index)
+```
+
+```{python}
+for i, batch in enumerate(train_batch_indexes):
+    train_df_transplant_final.loc[batch, 'batch'] = i
+train_df_transplant_final['batch'] = train_df_transplant_final['batch'].astype(int)
+```
+
+```{python}
+train_df_transplant_final.head()
+```
+
+## Dev
+
+```{python}
+dev_df_transplant_final = dev_df_transplant_final.reset_index(drop=True)
+```
+
+```{python}
+dev_batch_indexes = []
+# the NIL class has freq = 0 so it is fairly distributed among the batches
+for _, _index in skf.split(np.zeros(dev_df_transplant_final.shape[0]), dev_df_transplant_final['freq']):
+    dev_batch_indexes.append(_index)
+```
+
+```{python}
+for i, batch in enumerate(dev_batch_indexes):
+    dev_df_transplant_final.loc[batch, 'batch'] = i
+dev_df_transplant_final['batch'] = dev_df_transplant_final['batch'].astype(int)
+```
+
+```{python}
+dev_df_transplant_final.head()
+```
+
+## Test
+
+```{python}
+test_df_transplant_final = test_df_transplant_final.reset_index(drop=True)
+```
+
+```{python}
+test_batch_indexes = []
+# the NIL class has freq = 0 so it is fairly distributed among the batches
+for _, _index in skf.split(np.zeros(test_df_transplant_final.shape[0]), test_df_transplant_final['freq']):
+    test_batch_indexes.append(_index)
+```
+
+```{python}
+for i, batch in enumerate(test_batch_indexes):
+    test_df_transplant_final.loc[batch, 'batch'] = i
+test_df_transplant_final['batch'] = test_df_transplant_final['batch'].astype(int)
+```
+
+```{python}
+test_df_transplant_final.head()
+```
+
+# Prepare for BLINK
+
+```{python}
+train_df_transplant_final = train_df_transplant_final.rename(columns = {
+    'left_context_text': 'context_left',
+    'word': 'mention',
+    'right_context_text': 'context_right',
+    'ex_id': 'query_id',
+    'url':'label_id',
+    'wikiId':'Wikipedia_ID',
+    'wikiurl':'Wikipedia_URL',
+    'y_title': 'Wikipedia_title'
+})
+```
+
+```{python}
+dev_df_transplant_final = dev_df_transplant_final.rename(columns = {
+    'left_context_text': 'context_left',
+    'word': 'mention',
+    'right_context_text': 'context_right',
+    'ex_id': 'query_id',
+    'url':'label_id',
+    'wikiId':'Wikipedia_ID',
+    'wikiurl':'Wikipedia_URL',
+    'y_title': 'Wikipedia_title'
+})
+```
+
+```{python}
+test_df_transplant_final = test_df_transplant_final.rename(columns = {
+    'left_context_text': 'context_left',
+    'word': 'mention',
+    'right_context_text': 'context_right',
+    'ex_id': 'query_id',
+    'url':'label_id',
+    'wikiId':'Wikipedia_ID',
+    'wikiurl':'Wikipedia_URL',
+    'y_title': 'Wikipedia_title'
+})
+```
+
+# Save to disk
+
+```{python}
+train_basedir = os.path.join(outdir, 'train')
+os.makedirs(train_basedir, exist_ok=True)
+print('Saving train...')
+for batch in range(n_batch):
+    print('Batch {} of {}'.format(batch + 1, n_batch))
+    train_batch = train_df_transplant_final[train_df_transplant_final['batch'] == batch]
+    with open(os.path.join(train_basedir, 'train_{}.jsonl'.format(batch)), 'w') as fd:
+        for i, row in tqdm(train_batch.iterrows(), total=train_batch.shape[0]):
+            fd.write(row.to_json())
+            fd.write('\n')
+```
+
+```{python}
+dev_basedir = os.path.join(outdir, 'dev')
+os.makedirs(dev_basedir, exist_ok=True)
+print('Saving dev...')
+for batch in range(n_batch):
+    print('Batch {} of {}'.format(batch + 1, n_batch))
+    dev_batch = dev_df_transplant_final[dev_df_transplant_final['batch'] == batch]
+    with open(os.path.join(dev_basedir, 'dev_{}.jsonl'.format(batch)), 'w') as fd:
+        for i, row in tqdm(dev_batch.iterrows(), total=dev_batch.shape[0]):
+            fd.write(row.to_json())
+            fd.write('\n')
+```
+
+```{python}
+test_basedir = os.path.join(outdir, 'test')
+os.makedirs(test_basedir, exist_ok=True)
+print('Saving test...')
+for batch in range(n_batch):
+    print('Batch {} of {}'.format(batch + 1, n_batch))
+    test_batch = test_df_transplant_final[test_df_transplant_final['batch'] == batch]
+    with open(os.path.join(test_basedir, 'test_{}.jsonl'.format(batch)), 'w') as fd:
+        for i, row in tqdm(test_batch.iterrows(), total=test_batch.shape[0]):
+            fd.write(row.to_json())
+            fd.write('\n')
+```
+
+# Statistics
+
+```{python}
+report = []
+```
+
+```{python}
+for batch in trange(n_batch):
+    train_batch = train_df_transplant_final[train_df_transplant_final['batch'] == batch]
+    dev_batch = dev_df_transplant_final[dev_df_transplant_final['batch'] == batch]
+    test_batch = test_df_transplant_final[test_df_transplant_final['batch'] == batch]
+    
+    batch_report = {}
+    batch_report['batch'] = batch
+    
+    # mentions
+    batch_report['train_mentions'] = train_batch.shape[0]
+    batch_report['dev_mentions'] = dev_batch.shape[0]
+    batch_report['test_mentions'] = test_batch.shape[0]
+
+    # entities
+    batch_report['train_entities'] = train_batch['Wikipedia_ID'].drop_duplicates().shape[0]
+    batch_report['dev_entities'] = dev_batch['Wikipedia_ID'].drop_duplicates().shape[0]
+    batch_report['test_entities'] = test_batch['Wikipedia_ID'].drop_duplicates().shape[0]
+
+    # NIL mentions
+    batch_report['train_nil_mentions'] = train_batch.eval('NIL').sum()
+    batch_report['dev_nil_mentions'] = dev_batch.eval('NIL').sum()
+    batch_report['test_nil_mentions'] = test_batch.eval('NIL').sum()
+
+    # NIL entities
+    batch_report['train_nil_entities'] = train_batch.query('NIL')['Wikipedia_ID'].drop_duplicates().shape[0]
+    batch_report['dev_nil_entities'] = dev_batch.query('NIL')['Wikipedia_ID'].drop_duplicates().shape[0]
+    batch_report['test_nil_entities'] = test_batch.query('NIL')['Wikipedia_ID'].drop_duplicates().shape[0]
+    
+    # NIL entities present in a previous batch
+    batch_report['train_nil_entities_found_in_previous_batch'] = len(
+        set(train_batch.query('NIL')['Wikipedia_ID'].drop_duplicates()
+           ).intersection(
+            # the set of all the nil entities found in the previous batches
+            set(train_df_transplant_final.query('NIL and batch < {}'.format(batch))['Wikipedia_ID'].drop_duplicates())
+        )
+    )
+    batch_report['dev_nil_entities_found_in_previous_batch'] = len(
+        set(dev_batch.query('NIL')['Wikipedia_ID'].drop_duplicates()
+           ).intersection(
+            # the set of all the nil entities found in the previous batches
+            set(dev_df_transplant_final.query('NIL and batch < {}'.format(batch))['Wikipedia_ID'].drop_duplicates())
+        )
+    )
+    batch_report['test_nil_entities_found_in_previous_batch'] = len(
+        set(test_batch.query('NIL')['Wikipedia_ID'].drop_duplicates()
+           ).intersection(
+            # the set of all the nil entities found in the previous batches
+            set(test_df_transplant_final.query('NIL and batch < {}'.format(batch))['Wikipedia_ID'].drop_duplicates())
+        )
+    )
+    
+    report.append(batch_report)
+```
+
+```{python}
+all_dataset = {}
+all_dataset['batch'] = 'ALL'
+
+# mentions
+all_dataset['train_mentions'] = train_df_transplant_final.shape[0]
+all_dataset['dev_mentions'] = dev_df_transplant_final.shape[0]
+all_dataset['test_mentions'] = test_df_transplant_final.shape[0]
+
+# entities
+all_dataset['train_entities'] = train_df_transplant_final['Wikipedia_ID'].drop_duplicates().shape[0]
+all_dataset['dev_entities'] = dev_df_transplant_final['Wikipedia_ID'].drop_duplicates().shape[0]
+all_dataset['test_entities'] = test_df_transplant_final['Wikipedia_ID'].drop_duplicates().shape[0]
+
+# NIL mentions
+all_dataset['train_nil_mentions'] = train_df_transplant_final.eval('NIL').sum()
+all_dataset['dev_nil_mentions'] = dev_df_transplant_final.eval('NIL').sum()
+all_dataset['test_nil_mentions'] = test_df_transplant_final.eval('NIL').sum()
+
+# NIL entities
+all_dataset['train_nil_entities'] = train_df_transplant_final.query('NIL')['Wikipedia_ID'].drop_duplicates().shape[0]
+all_dataset['dev_nil_entities'] = dev_df_transplant_final.query('NIL')['Wikipedia_ID'].drop_duplicates().shape[0]
+all_dataset['test_nil_entities'] = test_df_transplant_final.query('NIL')['Wikipedia_ID'].drop_duplicates().shape[0]
+
+# NIL entities present in a previous batch
+all_dataset['train_nil_entities_found_in_previous_batch'] = 0
+all_dataset['dev_nil_entities_found_in_previous_batch'] = 0
+all_dataset['test_nil_entities_found_in_previous_batch'] = 0
+
+report.append(all_dataset)
+```
+
+```{python}
+original_dataset = {}
+original_dataset['batch'] = 'ORIGINAL'
+
+# mentions
+original_dataset['train_mentions'] = train_df.shape[0]
+original_dataset['dev_mentions'] = dev_df.shape[0]
+original_dataset['test_mentions'] = test_df.shape[0]
+
+# entities
+original_dataset['train_entities'] = train_df['wikiId'].drop_duplicates().shape[0]
+original_dataset['dev_entities'] = dev_df['wikiId'].drop_duplicates().shape[0]
+original_dataset['test_entities'] = test_df['wikiId'].drop_duplicates().shape[0]
+
+# NIL mentions
+original_dataset['train_nil_mentions'] =  0
+original_dataset['dev_nil_mentions'] = 0
+original_dataset['test_nil_mentions'] = 0
+
+# NIL entities
+original_dataset['train_nil_entities'] = 0
+original_dataset['dev_nil_entities'] = 0
+original_dataset['test_nil_entities'] = 0
+
+# NIL entities present in a previous batch
+original_dataset['train_nil_entities_found_in_previous_batch'] = 0
+original_dataset['dev_nil_entities_found_in_previous_batch'] = 0
+original_dataset['test_nil_entities_found_in_previous_batch'] = 0
+
+report.append(original_dataset)
+```
+
+```{python}
+report_df = pd.DataFrame(report)
+report_df
+```
+
+## Save statistics
+
+```{python}
+stats_basedir = os.path.join(outdir, 'statistics')
+os.makedirs(stats_basedir, exist_ok=True)
+```
+
+```{python}
+report_df.to_csv(os.path.join(stats_basedir, 'statistics.csv'))
+```
