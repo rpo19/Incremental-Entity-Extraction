@@ -5,7 +5,7 @@ jupyter:
       extension: .Rmd
       format_name: rmarkdown
       format_version: '1.2'
-      jupytext_version: 1.13.7
+      jupytext_version: 1.13.8
   kernelspec:
     display_name: Python 3 (ipykernel)
     language: python
@@ -122,10 +122,6 @@ freq_df.head()
 ```
 
 ```{python}
-# calculate the mean frequency with which all the entities are mentioned
-mu_freq = np.mean(freq_df['freq'])
-mu_freq
-
 # calculate the median frequency with which all the entities are mentioned
 med_freq = np.median(freq_df['freq'])
 med_freq
@@ -153,7 +149,7 @@ print('N# NIL:', freq_df.eval('NIL').sum(), 'percentage:', freq_df.eval('NIL').s
 
 ```{python}
 #Imposto la frequenza dei NIL = 0 in modo che poi quando farò la suddivisione in batch stratificata ci sia anche proporzionale tra i 
-#NIL in ogni batch
+#NIL in ogni batch # TODO traduco
 freq_df.loc[freq_df['NIL'] == True, 'freq'] = 0
 ```
 
@@ -178,8 +174,40 @@ dev_df_merged = dev_df.join(freq_df, how='left', on='wikiId')
 ```{python}
 dev_df_merged['p_formula'] = dev_df_merged['p_formula'].fillna(-1)
 dev_df_merged['p_uniform'] = dev_df_merged['p_uniform'].fillna(-1)
-dev_df_merged['freq'] = dev_df_merged['freq'].fillna(-1)
 dev_df_merged['NIL'] = dev_df_merged['NIL'].fillna(False)
+```
+
+Compute entity frequencies in dev for a correct sampling
+
+```{python}
+mention_frequency_dev = dev_df_merged.query('~NIL').groupby('wikiId').size()
+```
+
+```{python}
+mention_frequency_dev
+```
+
+```{python}
+freq_df_dev = pd.DataFrame(mention_frequency_dev)
+freq_df_dev.columns = ['freq']
+freq_df_dev.shape
+```
+
+```{python}
+freq_df_dev.head()
+```
+
+```{python}
+dev_df_merged = dev_df_merged.drop(columns=['freq']).join(freq_df_dev, how='left', on='wikiId')
+```
+
+```{python}
+# set NIL entities freq to 0 for stratifying the NIL class
+dev_df_merged.loc[dev_df_merged['NIL'], 'freq'] = 0
+```
+
+```{python}
+dev_df_merged['freq'] = dev_df_merged['freq'].astype(int)
 ```
 
 ```{python}
@@ -197,8 +225,40 @@ test_df_merged = test_df.join(freq_df, how='left', on='wikiId')
 ```{python}
 test_df_merged['p_formula'] = test_df_merged['p_formula'].fillna(-1)
 test_df_merged['p_uniform'] = test_df_merged['p_uniform'].fillna(-1)
-test_df_merged['freq'] = test_df_merged['freq'].fillna(-1)
 test_df_merged['NIL'] = test_df_merged['NIL'].fillna(False)
+```
+
+Compute entity frequencies in test for a correct sampling
+
+```{python}
+mention_frequency_test = test_df_merged.query('~NIL').groupby('wikiId').size()
+```
+
+```{python}
+mention_frequency_test
+```
+
+```{python}
+freq_df_test = pd.DataFrame(mention_frequency_test)
+freq_df_test.columns = ['freq']
+freq_df_test.shape
+```
+
+```{python}
+freq_df_test.head()
+```
+
+```{python}
+test_df_merged = test_df_merged.drop(columns=['freq']).join(freq_df_test, how='left', on='wikiId')
+```
+
+```{python}
+# set NIL entities freq to 0 for stratifying the NIL class
+test_df_merged.loc[test_df_merged['NIL'], 'freq'] = 0
+```
+
+```{python}
+test_df_merged['freq'] = test_df_merged['freq'].astype(int)
 ```
 
 ```{python}
@@ -787,34 +847,48 @@ for batch in trange(n_batch):
     batch_report['train_nil_mentions'] = train_batch.eval('NIL').sum()
     batch_report['dev_nil_mentions'] = dev_batch.eval('NIL').sum()
     batch_report['test_nil_mentions'] = test_batch.eval('NIL').sum()
+    
+    # not-NIL mentions
+    batch_report['train_not_nil_mentions'] = batch_report['train_mentions'] - batch_report['train_nil_mentions']
+    batch_report['dev_not_nil_mentions'] = batch_report['dev_mentions'] - batch_report['dev_nil_mentions']
+    batch_report['test_not_nil_mentions'] = batch_report['test_mentions'] - batch_report['test_nil_mentions']
 
     # NIL entities
     batch_report['train_nil_entities'] = train_batch.query('NIL')['Wikipedia_ID'].drop_duplicates().shape[0]
     batch_report['dev_nil_entities'] = dev_batch.query('NIL')['Wikipedia_ID'].drop_duplicates().shape[0]
     batch_report['test_nil_entities'] = test_batch.query('NIL')['Wikipedia_ID'].drop_duplicates().shape[0]
     
+    # not-NIL entities
+    batch_report['train_not_nil_entities'] = batch_report['train_entities'] - batch_report['train_nil_entities']
+    batch_report['dev_not_nil_entities'] = batch_report['dev_entities'] - batch_report['dev_nil_entities']
+    batch_report['test_not_nil_entities'] = batch_report['test_entities'] - batch_report['test_nil_entities']
+    
     # NIL entities present in a previous batch
-    batch_report['train_nil_entities_found_in_previous_batch'] = len(
-        set(train_batch.query('NIL')['Wikipedia_ID'].drop_duplicates()
+    train_indexes = set(train_batch.query('NIL')['Wikipedia_ID'].drop_duplicates()
            ).intersection(
             # the set of all the nil entities found in the previous batches
             set(train_df_transplant_final.query('NIL and batch < {}'.format(batch))['Wikipedia_ID'].drop_duplicates())
         )
-    )
-    batch_report['dev_nil_entities_found_in_previous_batch'] = len(
-        set(dev_batch.query('NIL')['Wikipedia_ID'].drop_duplicates()
+    batch_report['train_nil_entities_found_in_previous_batch'] = len(train_indexes)
+    
+    dev_indexes = set(dev_batch.query('NIL')['Wikipedia_ID'].drop_duplicates()
            ).intersection(
             # the set of all the nil entities found in the previous batches
             set(dev_df_transplant_final.query('NIL and batch < {}'.format(batch))['Wikipedia_ID'].drop_duplicates())
         )
-    )
-    batch_report['test_nil_entities_found_in_previous_batch'] = len(
-        set(test_batch.query('NIL')['Wikipedia_ID'].drop_duplicates()
+    batch_report['dev_nil_entities_found_in_previous_batch'] = len(dev_indexes)
+    
+    test_indexes = set(test_batch.query('NIL')['Wikipedia_ID'].drop_duplicates()
            ).intersection(
             # the set of all the nil entities found in the previous batches
             set(test_df_transplant_final.query('NIL and batch < {}'.format(batch))['Wikipedia_ID'].drop_duplicates())
         )
-    )
+    batch_report['test_nil_entities_found_in_previous_batch'] = len(test_indexes)
+    
+    # NIL mentions present in a previous batch
+    batch_report['train_nil_mentions_found_in_previous_batch'] = train_batch['Wikipedia_ID'].isin(train_indexes).sum()
+    batch_report['dev_nil_mentions_found_in_previous_batch'] = dev_batch['Wikipedia_ID'].isin(dev_indexes).sum()
+    batch_report['test_nil_mentions_found_in_previous_batch'] = test_batch['Wikipedia_ID'].isin(test_indexes).sum()
     
     report.append(batch_report)
 ```
@@ -838,15 +912,30 @@ all_dataset['train_nil_mentions'] = train_df_transplant_final.eval('NIL').sum()
 all_dataset['dev_nil_mentions'] = dev_df_transplant_final.eval('NIL').sum()
 all_dataset['test_nil_mentions'] = test_df_transplant_final.eval('NIL').sum()
 
+# not-NIL mentions
+all_dataset['train_not_nil_mentions'] = all_dataset['train_mentions'] - all_dataset['train_nil_mentions']
+all_dataset['dev_not_nil_mentions'] = all_dataset['dev_mentions'] - all_dataset['dev_nil_mentions']
+all_dataset['test_not_nil_mentions'] = all_dataset['test_mentions'] - all_dataset['test_nil_mentions']
+
 # NIL entities
 all_dataset['train_nil_entities'] = train_df_transplant_final.query('NIL')['Wikipedia_ID'].drop_duplicates().shape[0]
 all_dataset['dev_nil_entities'] = dev_df_transplant_final.query('NIL')['Wikipedia_ID'].drop_duplicates().shape[0]
 all_dataset['test_nil_entities'] = test_df_transplant_final.query('NIL')['Wikipedia_ID'].drop_duplicates().shape[0]
 
+# not-NIL entities
+all_dataset['train_not_nil_entities'] = all_dataset['train_entities'] - all_dataset['train_nil_entities']
+all_dataset['dev_not_nil_entities'] = all_dataset['dev_entities'] - all_dataset['dev_nil_entities']
+all_dataset['test_not_nil_entities'] = all_dataset['test_entities'] - all_dataset['test_nil_entities']
+
 # NIL entities present in a previous batch
 all_dataset['train_nil_entities_found_in_previous_batch'] = 0
 all_dataset['dev_nil_entities_found_in_previous_batch'] = 0
 all_dataset['test_nil_entities_found_in_previous_batch'] = 0
+
+# NIL mentions present in a previous batch
+all_dataset['train_nil_mentions_found_in_previous_batch'] = 0
+all_dataset['dev_nil_mentions_found_in_previous_batch'] = 0
+all_dataset['test_nil_mentions_found_in_previous_batch'] = 0
 
 report.append(all_dataset)
 ```
@@ -870,15 +959,30 @@ original_dataset['train_nil_mentions'] =  0
 original_dataset['dev_nil_mentions'] = 0
 original_dataset['test_nil_mentions'] = 0
 
+# not-NIL mentions
+original_dataset['train_not_nil_mentions'] = original_dataset['train_mentions'] - original_dataset['train_nil_mentions']
+original_dataset['dev_not_nil_mentions'] = original_dataset['dev_mentions'] - original_dataset['dev_nil_mentions']
+original_dataset['test_not_nil_mentions'] = original_dataset['test_mentions'] - original_dataset['test_nil_mentions']
+
 # NIL entities
 original_dataset['train_nil_entities'] = 0
 original_dataset['dev_nil_entities'] = 0
 original_dataset['test_nil_entities'] = 0
 
+# not-NIL entities
+original_dataset['train_not_nil_entities'] = original_dataset['train_entities'] - original_dataset['train_nil_entities']
+original_dataset['dev_not_nil_entities'] = original_dataset['dev_entities'] - original_dataset['dev_nil_entities']
+original_dataset['test_not_nil_entities'] = original_dataset['test_entities'] - original_dataset['test_nil_entities']
+
 # NIL entities present in a previous batch
 original_dataset['train_nil_entities_found_in_previous_batch'] = 0
 original_dataset['dev_nil_entities_found_in_previous_batch'] = 0
 original_dataset['test_nil_entities_found_in_previous_batch'] = 0
+
+# NIL mentions present in a previous batch
+original_dataset['train_nil_mentions_found_in_previous_batch'] = 0
+original_dataset['dev_nil_mentions_found_in_previous_batch'] = 0
+original_dataset['test_nil_mentions_found_in_previous_batch'] = 0
 
 report.append(original_dataset)
 ```
