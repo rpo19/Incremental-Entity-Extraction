@@ -1002,3 +1002,37 @@ os.makedirs(stats_basedir, exist_ok=True)
 ```{python}
 report_df.to_csv(os.path.join(stats_basedir, 'statistics.csv'))
 ```
+
+ # Remove NIL entities from the KB
+
+```{python}
+NIL_entities = []
+NIL_entities.extend(
+    train_df_transplant_final.query('NIL')['Wikipedia_ID'].tolist())
+NIL_entities.extend(
+    dev_df_transplant_final.query('NIL')['Wikipedia_ID'].tolist())
+NIL_entities.extend(
+    test_df_transplant_final.query('NIL')['Wikipedia_ID'].tolist())
+```
+
+```{python}
+NIL_entities = set(NIL_entities) # remove duplicates
+```
+
+```{python}
+sql_list = ",".join(str(i) for i in NIL_entities)
+indexer = 10 # TODO ensure to put the correct indexer
+sql_query = 'DELETE FROM entities WHERE indexer = {} AND wikipedia_id in ({});'.format(indexer, sql_list)
+```
+
+```{python}
+with open(os.path.join(outdir, 'delete_nil_entities.sql'), 'w') as fd:
+    fd.write(sql_query + '\n')
+```
+
+Now run the sql query in the database (e.g.):
+```
+sudo docker-compose exec -T postgres psql -U postgres < /path/to/incremental_dataset/delete_nil_entities.sql
+```
+
+At this point NIL entities are removed from the db and even if retrieved by the faiss indexer they are discarded.
