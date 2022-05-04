@@ -6,6 +6,17 @@ Running the pipeline requires about:
 - 50G disk (index, entities information, models)
 - GPU is not mandatory but recommended (at least for running the pipeline on an entire dataset)
 
+# Project structure
+```
+notebooks           # interactive notebooks
+pipeline            # pipeline services
+README.md
+requirements.txt    # python requirements for notebooks and scripts
+scripts             # scripts
+```
+TODO: go deeper
+
+
 # Dataset
 Download the dataset or create it starting from Wikilinks Unseen-Mentions.
 
@@ -75,7 +86,7 @@ models/faiss_hnsw_index.pkl             29G
 ```
 
 ### Prepare environment variables
-Copy the file `env-sample.txt` to `.env`, then edit the latter so that it fits your needs.
+Enter the `pipeline` folder and copy the file `env-sample.txt` to `.env`, then edit the latter so that it fits your needs.
 
 ### Populate entity database
 We need to populate the database with entities information (e.g. Wikipedia IDs, titles).
