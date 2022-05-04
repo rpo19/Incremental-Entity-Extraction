@@ -423,7 +423,6 @@ def run_batch(batch, data, no_add, save_path, prepare_for_nil_prediction_train_f
     report['should_be_linked_to_prev_added_correct_normalized'] = should_be_linked_to_prev_added_correct / (should_be_linked_to_prev_added_total + sys.float_info.min)
 
     report['overall_correct'] = overall_correct
-    report['overall_total'] = overall_correct
     report['overall_accuracy'] = overall_correct / data.shape[0]
 
     ### print output

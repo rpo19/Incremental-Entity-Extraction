@@ -125,16 +125,88 @@ docker-compose up -d
 Use the notebook [try_pipeline](notebooks/try_pipeline.ipynb).
 
 ## Evaluate
-Run:
+### Incremental Evaluation
+Ensure the pipeline is up, then run:
+```
+python scripts/eval_kbp.py --report evaluation_report_incremental.csv \
+    incremental_dataset/test/test_0.jsonl \
+    incremental_dataset/test/test_1.jsonl \
+    incremental_dataset/test/test_2.jsonl \
+    incremental_dataset/test/test_3.jsonl \
+    incremental_dataset/test/test_4.jsonl \
+    incremental_dataset/test/test_5.jsonl \
+    incremental_dataset/test/test_6.jsonl \
+    incremental_dataset/test/test_7.jsonl \
+    incremental_dataset/test/test_8.jsonl \
+    incremental_dataset/test/test_9.jsonl
 ```
 
+### One-pass Evaluation
+Ensure the pipeline is up, then run:
+```
+python scripts/eval_kbp.py --no-incremental --report evaluation_report_onepass.csv \
+    incremental_dataset/test/test_0.jsonl \
+    incremental_dataset/test/test_1.jsonl \
+    incremental_dataset/test/test_2.jsonl \
+    incremental_dataset/test/test_3.jsonl \
+    incremental_dataset/test/test_4.jsonl \
+    incremental_dataset/test/test_5.jsonl \
+    incremental_dataset/test/test_6.jsonl \
+    incremental_dataset/test/test_7.jsonl \
+    incremental_dataset/test/test_8.jsonl \
+    incremental_dataset/test/test_9.jsonl
+```
+
+### Report
+The report contains a line for each batch (also a line with the average over all the batches) with this metrics:
+```
+batch:                  batch identifier
+size:                   batch size
+linking_recall@1:       recall@k of the linking of not-NIL mentions
+linking_recall@2:
+linking_recall@3:
+linking_recall@5:
+linking_recall@10:
+linking_recall@30:
+linking_recall@100:
+nil_prediction_cm:                  NIL prediction confusion matrix
+nil_prediction_cm_normalized:       " normalized
+nil_prediction_mitigated_cm:        NIL prediction mitigated (correct when a linking error is NIL)
+nil_prediction_mitigated_cm_normalized:
+nil_clustering_bcubed_precision:    NIL clustering bcubed precision
+nil_clustering_bcubed_recall:       " recall
+overall_to_link_correct:            linked_correcly / to_link
+should_be_nil_correct:              number of correct nil
+should_be_nil_total:                expected correct nil
+should_be_nil_correct_normalized:   correct_nil / expected
+should_be_linked_to_prev_added_correct:     number of mention correctly linked to entities added from previous clusters
+should_be_linked_to_prev_added_total:       expected number of mentions to link to prev added entities
+should_be_linked_to_prev_added_correct_normalized:  " normalized
+overall_correct:        correct_predictions end-to-end
+overall_accuracy:       " normalized
+NIL--precision:         NIL prediction precision of the NIL class
+NIL--recall:            " recall
+NIL--f1-score:
+NIL--support:
+not-NIL--precision:     " of the not-NIL class
+not-NIL--recall:
+not-NIL--f1-score:
+not-NIL--support:
+NIL-mitigated-precision:    " mitigated (correct when a linking error is NIL)
+NIL-mitigated-recall:
+NIL-mitigated-f1-score:
+NIL-mitigated-support:
+not-NIL-mitigated-precision:
+not-NIL-mitigated-recall:
+not-NIL-mitigated-f1-score:
+not-NIL-mitigated-support
 ```
 
 ## Train NIL prediction
 
 In this example we train using the first batch of train from the incremental dataset and using the first batch of dev for evaluating and comparing the NIL prediction models.
 
-Prepare data for the NIL prediction study/training: we need to get linking scores:
+Prepare data for the NIL prediction study/training: we need to get linking scores. Ensure the pipeline is up, then run
 ```
 python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_0.jsonl
 
@@ -156,6 +228,15 @@ The `nilprediction_output` folder will contain:
 - a summary (feature_ablation_summary.csv) that compares all the models
 - plots of the distribution of the predictions
 - performance report for each model
+```
+nilprediction_output/feature_ablation_summary.csv
+nilprediction_output/nilp_bi_max_levenshtein_jaccard_model.pickle
+nilprediction_output/nilp_bi_max_levenshtein_jaccard_kde_correct_errors.png
+nilprediction_output/nilp_bi_max_levenshtein_jaccard_kde.png
+nilprediction_output/nilp_bi_max_levenshtein_jaccard_report.txt
+nilprediction_output/nilp_bi_max_levenshtein_jaccard_roc.png
+...
+```
 
 ## Without GPU
 Edit the `docker-copmose.yml` commenting the part related to the gpu (Look for the comments in the file).
