@@ -1,9 +1,13 @@
 # Disclaimer
 
 Tested on GNU/Linux.
+Running the pipeline requires about:
+- 30G RAM (the index of 6M wikipedia entities is kept in memory)
+- 50G disk (index, entities information, models)
+- GPU is not mandatory but recommended (at least for running the pipeline on an entire dataset)
 
 # Dataset
-Download the dataset or create it starting from Wikilinks Unseen-Mentions
+Download the dataset or create it starting from Wikilinks Unseen-Mentions.
 
 ## Download the dataset
 TODO prepare url (google drive?)
