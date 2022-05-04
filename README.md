@@ -16,14 +16,11 @@ scripts             # scripts
 ```
 TODO: go deeper
 
-
-# Dataset
-Download the dataset or create it starting from Wikilinks Unseen-Mentions.
-
 # Python Environment
 To run the notebooks and the scripts in this repo you can use a python3 environment (See https://docs.python.org/3/library/venv.html).
 
 ## Create the environment
+Tested on Python 3.8.10.
 ```
 python3 -m venv venv
 source venv/bin/activate # works with bash
@@ -31,13 +28,15 @@ source venv/bin/activate # works with bash
 
 ## Install the requirements
 ```
+pip install --upgrade pip # upgrade pip
 pip install -r requirements.txt
 ```
 
-## Download the dataset
-TODO prepare url (google drive?)
+# Dataset
+Download the dataset or create it starting from Wikilinks Unseen-Mentions.
 
-Download from here and extract.
+## Download the dataset
+Download from [here](https://drive.google.com/drive/folders/1QmLhKpVwG_s9NVawsTpwrSB2sbdsPI9W?usp=sharing) and extract.
 
 ## Create the dataset
 Follow the notebook [create_dataset.ipynb]()
@@ -61,7 +60,7 @@ Follow these links to install them.
 - Nvidia Docker: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#setting-up-nvidia-container-toolkit
 
 ## Prepare
-Create a folder named `models` in the root folder of the project (same folder of `docker-compose.yml`), if it does not exist.
+Enter the pipeline folder then create a folder named `models` in the root folder of the project (same folder of `docker-compose.yml`), if it does not exist.
 
 ### Download models
 We need to download these files and put them in the models directory:
@@ -74,40 +73,51 @@ We need to download these files and put them in the models directory:
     - http://dl.fbaipublicfiles.com/BLINK/entity.jsonl
     - TODO ensure populate works if not gzipped
 - the NIL prediction model:
-    - TODO link
+    - the file `nilp_bi_max_levenshtein_jaccard_model.pickle` from [here](https://drive.google.com/drive/folders/1QmLhKpVwG_s9NVawsTpwrSB2sbdsPI9W?usp=sharing)
 
 Once downloaded the model folder should look like this:
 ```
-models/
-models/biencoder_wiki_large.bin         2.5G
-models/biencoder_wiki_large.json
-models/entity.jsonl                     3.2G
-models/faiss_hnsw_index.pkl             29G
+pipeline/models/
+pipeline/models/biencoder_wiki_large.bin                        (2.5G)
+pipeline/models/biencoder_wiki_large.json
+pipeline/models/entity.jsonl                                    (3.2G)
+pipeline/models/faiss_hnsw_index.pkl                            (29G)
+pipeline/models/nilp_bi_max_levenshtein_jaccard_model.pickle
 ```
 
 ### Prepare environment variables
-Enter the `pipeline` folder and copy the file `env-sample.txt` to `.env`, then edit the latter so that it fits your needs.
+Go back to the `pipeline` folder and copy the file `env-sample.txt` to `.env`, then edit the latter so that it fits your needs.
 
 ### Populate entity database
 We need to populate the database with entities information (e.g. Wikipedia IDs, titles).
 
-Start postgres
+From inside the `pipeline` folder start postgres by running
 ```
-# you may need superuser priviledges
+# you may need to use sudo
 docker-compose up -d postgres
 ```
+Now postgres should listen on `tcp://127.0.0.1:5432`.
 
-Let postgres some seconds to setup, then run the population script:
+Let postgres run some seconds to initialize itself, then go back to the main directory of the project and with the python environment activated run the population script as follows. In case you changed the postgres password in the `.env` file replace `secret` in the following command with the password you chose.
 ```
-# TODO virtualenv with requirements
-python script/postgres_populate_entities.py --postgres postgresql://postgres:quauJae4eebeeleefie4han0shahreim@localhost:5432/postgres --table-name entities --entity_catalogue models/entity.jsonl --indexer 10
+python scripts/postgres_populate_entities.py --postgres postgresql://postgres:secret@127.0.0.1:5432/postgres --table-name entities --entity_catalogue pipeline/models/entity.jsonl --indexer 10
 ```
 
-At this point you can delete `models/entity.jsonl` since the information is in the database.
+At this point you can delete `pipeline/models/entity.jsonl` since the information is in the database.
+
+### Enable GPU
+
+In case you want to disable the GPU see [here](Without GPU).
+
+Otherwise ensure GPU is enabled or enable it by editing the JSON file `models/biencoder_wiki_large.json` setting
+```
+no_cuda: false
+```
 
 ### Start the services
-Run
+From inside the pipeline folder run
 ```
+# you may need sudo
 docker-compose up -d
 ```
 
@@ -121,7 +131,8 @@ TODO run script for evaluation and explain the metrics
 TODO run script to train NIL prediction models
 
 ## Without GPU
-Edit the JSON file `biencoder_wiki_large.json` setting
+Edit the `docker-copmose.yml` commenting the part related to the gpu (Look for the comments in the file).
+Edit the JSON file `models/biencoder_wiki_large.json` setting
 ```
 no_cuda: true
 ```

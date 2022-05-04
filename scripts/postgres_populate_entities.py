@@ -73,7 +73,7 @@ if __name__ == '__main__':
         dest="entity_catalogue",
         type=str,
         # default="models/tac_entity.jsonl",  # TAC-KBP
-        default="models/entity.jsonl",  # ALL WIKIPEDIA!
+        default="pipeline/models/entity.jsonl",  # ALL WIKIPEDIA!
         help="Path to the entity catalogue.",
     )
     parser.add_argument(

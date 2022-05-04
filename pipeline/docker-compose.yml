@@ -22,12 +22,14 @@ services:
       - 30300:80
     environment:
       - PYTHONPATH=/home/app
+    ########### GPU start ###########
     deploy:
       resources:
         reservations:
           devices:
             - capabilities: [ gpu ]
-    command: python main.py --host 0.0.0.0 --port 80 --biencoder_model models/itabig/biencoder_hard_for_real/epoch_0/pytorch_model.bin --biencoder_config models/itabig/biencoder_hard_for_real/epoch_0/config.json
+    ########### GPU end #############
+    command: python main.py --host 0.0.0.0 --port 80 --biencoder_model models/biencoder_wiki_large.bin --biencoder_config models/biencoder_wiki_large.json
 
   indexer:
     image: rpozzi/ibkp_indexer
@@ -38,7 +40,7 @@ services:
       - ./models:/home/app/models
     ports:
       - 127.0.0.1:30301:80
-    command: python main.py --host 0.0.0.0 --port 80 --index hnsw:models/faiss_hnsw_itahard_index_130.pkl:130:r,flat:models/flat_kbp_133.pkl:133:rw --postgres 'postgres://postgres:$POSTGRES_PASSWORD@postgres:5432/postgres' --vector-size 768 --language it
+    command: python main.py --host 0.0.0.0 --port 80 --index hnsw:models/faiss_hnsw_index.pkl:10:r,flat:models/faiss_flat_kbp_index.pkl:20:rw --postgres 'postgres://postgres:$POSTGRES_PASSWORD@postgres:5432/postgres' --vector-size 1024 --language en
 
   nilcluster:
     image: rpozzi/ibkp_nilcluster
