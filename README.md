@@ -1,4 +1,9 @@
-# Disclaimer
+# Credits
+The `biencoder` and `indexer` services are derived from https://github.com/facebookresearch/BLINK by Facebook, Inc. and its affiliates.
+
+The `nilcluster` service is derived from https://github.com/montis96/EntityClustering by Simone Monti.
+
+# System requirements
 
 Tested on GNU/Linux.
 Running the pipeline requires about:
@@ -86,7 +91,6 @@ We need to download these files and put them in the models directory:
     - http://dl.fbaipublicfiles.com/BLINK/faiss_hnsw_index.pkl
 - the information about the entities in the index (from Meta Research):
     - http://dl.fbaipublicfiles.com/BLINK/entity.jsonl
-    - TODO ensure populate works if not gzipped
 - the NIL prediction model:
     - the file `nilp_bi_max_levenshtein_jaccard_model.pickle` from [here](https://drive.google.com/drive/folders/1QmLhKpVwG_s9NVawsTpwrSB2sbdsPI9W?usp=sharing)
 
@@ -269,17 +273,3 @@ Edit the JSON file `models/biencoder_wiki_large.json` setting
 no_cuda: true
 ```
 We suggest to use GPU for evaluating a dataset, while to try the pipeline CPU should be enough.
-
-# TODO
-- ringraziamento simone repo
-- citare facebook research (il codice arriva da li)
-- cosa arriva in che cartella? incremental_dataset, models
-- quali script servono ora?
-    - populate postgres
-    - train nil prediction
-    - eval_kbp
-        - refactor magari
-- notebooks: creare cartella notebooks?
-    - create dataset
-    - try pipeline
-- requirements degli scripts
