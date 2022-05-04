@@ -122,13 +122,40 @@ docker-compose up -d
 ```
 
 ## Try the pipeline
-TODO notebook with example text
+Use the notebook [try_pipeline](notebooks/try_pipeline.ipynb).
 
 ## Evaluate
-TODO run script for evaluation and explain the metrics
+Run:
+```
+
+```
 
 ## Train NIL prediction
-TODO run script to train NIL prediction models
+
+In this example we train using the first batch of train from the incremental dataset and using the first batch of dev for evaluating and comparing the NIL prediction models.
+
+Prepare data for the NIL prediction study/training: we need to get linking scores:
+```
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_0.jsonl
+
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/dev/dev_0.jsonl
+```
+You should see two files in the folder `output/prepare_for_nil_study`:
+```
+train_0_outdata.pickle
+dev_0_outdata.pickle
+```
+
+Then run the study and train the models with:
+```
+python scripts/feature_ablation_study.py --train-path output/prepare_for_nil_study/train_0_outdata.pickle --test-path output/prepare_for_nil_study/dev_0_outdata.pickle --output-path nilprediction_output
+```
+
+The `nilprediction_output` folder will contain:
+- the models
+- a summary (feature_ablation_summary.csv) that compares all the models
+- plots of the distribution of the predictions
+- performance report for each model
 
 ## Without GPU
 Edit the `docker-copmose.yml` commenting the part related to the gpu (Look for the comments in the file).
