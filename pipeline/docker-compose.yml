@@ -19,7 +19,7 @@ services:
     volumes:
       - ./models:/home/app/models
     ports:
-      - 30300:80
+      - 127.0.0.1:30300:80
     environment:
       - PYTHONPATH=/home/app
     ########### GPU start ###########
