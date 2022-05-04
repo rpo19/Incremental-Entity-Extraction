@@ -35,7 +35,7 @@ services:
     #     context: ./indexer
     #     dockerfile: Dockerfile
     volumes:
-      - ${LOCAL_WORKSPACE_FOLDER}/models:/home/app/models
+      - ./models:/home/app/models
     ports:
       - 127.0.0.1:30301:80
     command: python main.py --host 0.0.0.0 --port 80 --index hnsw:models/faiss_hnsw_itahard_index_130.pkl:130:r,flat:models/flat_kbp_133.pkl:133:rw --postgres 'postgres://postgres:$POSTGRES_PASSWORD@postgres:5432/postgres' --vector-size 768 --language it

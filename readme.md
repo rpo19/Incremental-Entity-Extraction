@@ -9,6 +9,20 @@ Running the pipeline requires about:
 # Dataset
 Download the dataset or create it starting from Wikilinks Unseen-Mentions.
 
+# Python Environment
+To run the notebooks and the scripts in this repo you can use a python3 environment (See https://docs.python.org/3/library/venv.html).
+
+## Create the environment
+```
+python3 -m venv venv
+source venv/bin/activate # works with bash
+```
+
+## Install the requirements
+```
+pip install -r requirements.txt
+```
+
 ## Download the dataset
 TODO prepare url (google drive?)
 
@@ -54,8 +68,14 @@ We need to download these files and put them in the models directory:
 Once downloaded the model folder should look like this:
 ```
 models/
-TODO...
+models/biencoder_wiki_large.bin         2.5G
+models/biencoder_wiki_large.json
+models/entity.jsonl                     3.2G
+models/faiss_hnsw_index.pkl             29G
 ```
+
+### Prepare environment variables
+Copy the file `env-sample.txt` to `.env`, then edit the latter so that it fits your needs.
 
 ### Populate entity database
 We need to populate the database with entities information (e.g. Wikipedia IDs, titles).
