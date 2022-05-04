@@ -2,8 +2,8 @@
 
 Tested on GNU/Linux.
 Running the pipeline requires about:
-- 30G RAM (the index of 6M wikipedia entities is kept in memory)
-- 50G disk (index, entities information, models)
+- ~33G RAM (the index of 6M wikipedia entities is kept in memory)
+- ~60G disk (index, entities information, models)
 - GPU is not mandatory but recommended (at least for running the pipeline on an entire dataset)
 
 # Project structure
@@ -36,10 +36,25 @@ pip install -r requirements.txt
 Download the dataset or create it starting from Wikilinks Unseen-Mentions.
 
 ## Download the dataset
-Download from [here](https://drive.google.com/drive/folders/1QmLhKpVwG_s9NVawsTpwrSB2sbdsPI9W?usp=sharing) and extract.
+Download from [here](https://drive.google.com/drive/folders/1QmLhKpVwG_s9NVawsTpwrSB2sbdsPI9W?usp=sharing) and extract it into the main folder of the project. You should see something like this:
+```
+.
+├── incremental_dataset
+│   ├── delete_nil_entities.sql
+│   ├── dev
+│   ├── statistics
+│   ├── test
+│   └── train
+├── notebooks
+│   ├── create_dataset.ipynb
+├── pipeline
+├── README.md
+├── requirements.txt
+└── scripts
+```
 
 ## Create the dataset
-Follow the notebook [create_dataset.ipynb]()
+Follow the notebook [create_dataset.ipynb]() and then copy the datset folder in the root directory of the project as shown in the previous directory structure.
 
 # Pipeline
 Every component of the pipeline is deployed as a microservice exposing HTTP APIs.
@@ -104,6 +119,15 @@ python scripts/postgres_populate_entities.py --postgres postgresql://postgres:se
 ```
 
 At this point you can delete `pipeline/models/entity.jsonl` since the information is in the database.
+
+#### Delete NIL entities from the database
+If you created a different dataset (by changing random seeds) you sould use the new sql command created by the notebook.
+
+Run the sql query from the file `incremental_dataset/delete_nil_entities.sql`: you could use the following command from the pipeline folder:
+```
+# you may need sudo
+docker-compose exec -T postgres psql -U postgres < ../incremental_dataset/delete_nil_entities.sql
+```
 
 ### Enable GPU
 
