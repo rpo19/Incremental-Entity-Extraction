@@ -87,3 +87,5 @@ Edit the JSON file `biencoder_wiki_large.json` setting
 no_cuda: true
 ```
 We suggest to use GPU for evaluating a dataset, while to try the pipeline CPU should be enough.
+
+# TODO ringraziamento simone repo

@@ -17,7 +17,7 @@ services:
     #   context: ./biencoder
     #   dockerfile: Dockerfile
     volumes:
-      - ${LOCAL_WORKSPACE_FOLDER}/models:/home/app/models
+      - ./models:/home/app/models
     ports:
       - 30300:80
     environment:
@@ -46,7 +46,7 @@ services:
     #     context: ./nilcluster
     #     dockerfile: Dockerfile
     volumes:
-      - ${LOCAL_WORKSPACE_FOLDER}/models:/home/app/models
+      - ./models:/home/app/models
     ports:
       - 127.0.0.1:30305:80
     environment:
@@ -59,7 +59,7 @@ services:
     #     context: ./nilpredictor
     #     dockerfile: Dockerfile
     volumes:
-      - ${LOCAL_WORKSPACE_FOLDER}/models:/home/app/models
+      - ./models:/home/app/models
     ports:
       - 127.0.0.1:30303:80
     command: python __main__.py --host 0.0.0.0 --port 80 --nil-bi-model models/nilp_bi_max_levenshtein_jaccard_model.pickle --nil-bi-features 'max_bi,levenshtein,jaccard'
