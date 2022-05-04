@@ -6,20 +6,42 @@ The `nilcluster` service is derived from https://github.com/montis96/EntityClust
 # System requirements
 
 Tested on GNU/Linux.
-Running the pipeline requires about:
+
+The pipeline requires about:
 - ~33G RAM (the index of 6M wikipedia entities is kept in memory)
 - ~60G disk (index, entities information, models)
 - GPU is not mandatory but recommended (at least for running the pipeline on an entire dataset)
 
 # Project structure
+```    
+.
+├── incremental_dataset                 # the dataset (not in git)
+│   ├── delete_nil_entities.sql
+│   ├── dev
+│   ├── statistics
+│   ├── test
+│   └── train
+├── notebooks                           # interactive notebooks
+│   ├── create_dataset.ipynb
+│   ├── create_dataset.Rmd
+│   ├── try_pipeline.ipynb
+│   └── try_pipeline.Rmd
+├── pipeline                            # pipeline services
+│   ├── biencoder
+│   ├── docker-compose.yml
+│   ├── env-sample.txt
+│   ├── indexer
+│   ├── models
+│   ├── nilcluster
+│   ├── nilpredictor
+│   └── postgres
+├── README.md
+├── requirements.txt                    # python requirements for notebooks and scripts
+└── scripts                             # scripts
+    ├── eval_kbp.py
+    ├── feature_ablation_study.py
+    └── postgres_populate_entities.py
 ```
-notebooks           # interactive notebooks
-pipeline            # pipeline services
-README.md
-requirements.txt    # python requirements for notebooks and scripts
-scripts             # scripts
-```
-TODO: go deeper
 
 # Python Environment
 To run the notebooks and the scripts in this repo you can use a python3 environment (See https://docs.python.org/3/library/venv.html).
@@ -41,7 +63,7 @@ pip install -r requirements.txt
 Download the dataset or create it starting from Wikilinks Unseen-Mentions.
 
 ## Download the dataset
-Download from [here](https://drive.google.com/drive/folders/1QmLhKpVwG_s9NVawsTpwrSB2sbdsPI9W?usp=sharing) and extract it into the main folder of the project. You should see something like this:
+Download from https://drive.google.com/drive/folders/1QmLhKpVwG_s9NVawsTpwrSB2sbdsPI9W?usp=sharing and extract it into the main folder of the project. You should see something like this:
 ```
 .
 ├── incremental_dataset
@@ -59,10 +81,10 @@ Download from [here](https://drive.google.com/drive/folders/1QmLhKpVwG_s9NVawsTp
 ```
 
 ## Create the dataset
-Follow the notebook [create_dataset.ipynb]() and then copy the datset folder in the root directory of the project as shown in the previous directory structure.
+Follow the notebook [create_dataset.ipynb](notebooks/create_dataset.ipynb) and then copy the dataset folder in the root directory of the project as shown in the previous directory structure.
 
 # Pipeline
-Every component of the pipeline is deployed as a microservice exposing HTTP APIs.
+Each component of the pipeline is deployed as a microservice exposing HTTP APIs.
 The services are:
 - biencoder: uses the biencoder to encode mentions (or entities) into vectors.
 - indexer: given a vector it runs the (approximate) nearest neighbor algorithm to retrieve the best candidates for linking .
@@ -92,7 +114,7 @@ We need to download these files and put them in the models directory:
 - the information about the entities in the index (from Meta Research):
     - http://dl.fbaipublicfiles.com/BLINK/entity.jsonl
 - the NIL prediction model:
-    - the file `nilp_bi_max_levenshtein_jaccard_model.pickle` from [here](https://drive.google.com/drive/folders/1QmLhKpVwG_s9NVawsTpwrSB2sbdsPI9W?usp=sharing)
+    - the file `nilp_bi_max_levenshtein_jaccard_model.pickle` from https://drive.google.com/drive/folders/1QmLhKpVwG_s9NVawsTpwrSB2sbdsPI9W?usp=sharing
 
 Once downloaded the model folder should look like this:
 ```
@@ -135,7 +157,7 @@ docker-compose exec -T postgres psql -U postgres < ../incremental_dataset/delete
 
 ### Enable GPU
 
-In case you want to disable the GPU see [here](Without GPU).
+In case you want to disable the GPU see [Without GPU](#without-gpu).
 
 Otherwise ensure GPU is enabled or enable it by editing the JSON file `models/biencoder_wiki_large.json` setting
 ```
