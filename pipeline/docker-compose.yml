@@ -1,0 +1,66 @@
+version: "3.3"
+services:
+
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+    volumes:
+      - ./postgres/data:/var/lib/postgresql/data
+      - "./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql"
+    ports:
+      - 127.0.0.1:5432:5432
+
+  biencoder:
+    image: rpozzi/ibkp_biencoder
+    # build:
+    #   context: ./biencoder
+    #   dockerfile: Dockerfile
+    volumes:
+      - ${LOCAL_WORKSPACE_FOLDER}/models:/home/app/models
+    ports:
+      - 30300:80
+    environment:
+      - PYTHONPATH=/home/app
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [ gpu ]
+    command: python main.py --host 0.0.0.0 --port 80 --biencoder_model models/itabig/biencoder_hard_for_real/epoch_0/pytorch_model.bin --biencoder_config models/itabig/biencoder_hard_for_real/epoch_0/config.json
+
+  indexer:
+    image: rpozzi/ibkp_indexer
+    # build:
+    #     context: ./indexer
+    #     dockerfile: Dockerfile
+    volumes:
+      - ${LOCAL_WORKSPACE_FOLDER}/models:/home/app/models
+    ports:
+      - 127.0.0.1:30301:80
+    command: python main.py --host 0.0.0.0 --port 80 --index hnsw:models/faiss_hnsw_itahard_index_130.pkl:130:r,flat:models/flat_kbp_133.pkl:133:rw --postgres 'postgres://postgres:$POSTGRES_PASSWORD@postgres:5432/postgres' --vector-size 768 --language it
+
+  nilcluster:
+    image: rpozzi/ibkp_nilcluster
+    # build:
+    #     context: ./nilcluster
+    #     dockerfile: Dockerfile
+    volumes:
+      - ${LOCAL_WORKSPACE_FOLDER}/models:/home/app/models
+    ports:
+      - 127.0.0.1:30305:80
+    environment:
+      - PYTHONPATH=/path/to/EntityClustering
+    command: python __main__.py --host 0.0.0.0 --port 80
+
+  nilpredictor:
+    image: rpozzi/ibkp_nilpredictor
+    # build:
+    #     context: ./nilpredictor
+    #     dockerfile: Dockerfile
+    volumes:
+      - ${LOCAL_WORKSPACE_FOLDER}/models:/home/app/models
+    ports:
+      - 127.0.0.1:30303:80
+    command: python __main__.py --host 0.0.0.0 --port 80 --nil-bi-model models/nilp_bi_max_levenshtein_jaccard_model.pickle --nil-bi-features 'max_bi,levenshtein,jaccard'
+
