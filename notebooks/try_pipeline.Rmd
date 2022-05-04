@@ -1,0 +1,262 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.13.8
+  kernelspec:
+    display_name: Python 3 (ipykernel)
+    language: python
+    name: python3
+---
+
+```{python}
+import pandas as pd
+import numpy as np
+import requests
+```
+
+```{python}
+# APIs
+biencoder = 'http://localhost:30300/api/blink/biencoder' # mention # entity
+biencoder_mention = f'{biencoder}/mention'
+biencoder_entity = f'{biencoder}/entity'
+crossencoder = 'http://localhost:30302/api/blink/crossencoder'
+indexer = 'http://localhost:30301/api/indexer' # search # add
+indexer_search = f'{indexer}/search'
+indexer_add = f'{indexer}/add'
+indexer_reset = f'{indexer}/reset/rw'
+nilpredictor = 'http://localhost:30303/api/nilprediction'
+nilcluster = 'http://localhost:30305/api/nilcluster'
+```
+
+# Reset the New Kb (RW index) to ensure it is empty
+
+```{python}
+print('Resetting RW index...')
+res_reset = requests.post(indexer_reset, data={})
+
+if res_reset.ok:
+    print('Reset done.')
+else:
+    print('ERROR while resetting!')
+```
+
+Load some data (e.g. the first batch of the dev set)
+
+```{python}
+data = pd.read_json('../incremental_dataset/dev/dev_0.jsonl', lines=True)
+```
+
+```{python}
+data.head()
+```
+
+Select 100 not-NIL + 100 NIL mentions
+
+```{python}
+number_not_nil = 50
+number_nil = 50
+
+selection = data.query('~NIL').head(number_not_nil)
+selection = pd.concat([selection, data.query('NIL').head(number_nil)])
+```
+
+```{python}
+selection.shape
+```
+
+Check how many NIL mentions should be clustered together (since they refer to the same out-of-KB entity)
+
+```{python}
+selection.query('NIL')['Wikipedia_ID'].value_counts()
+```
+
+```{python}
+selection.shape
+```
+
+# Biencoder encode mentions
+
+```{python}
+res_biencoder = requests.post(biencoder_mention,
+        json=selection[[
+            'mention',
+            'context_left',
+            'context_right'
+            ]].to_dict(orient='records'))
+```
+
+```{python}
+if res_biencoder.ok:
+    selection['encoding'] = res_biencoder.json()['encodings']
+    print('Biencode OK')
+    print('Encoded {} entities.'.format(selection.shape[0]))
+else:
+    print('Biencoder ERROR')
+    print(res_biencoder)
+    raise Exception('Biencoder ERROR')
+```
+
+The encoding columns has been added with the base64 encoded vector representing the mention
+
+```{python}
+selection[['encoding']].head()
+```
+
+# Retrieval with indexer
+
+```{python}
+body = {
+    'encodings': selection['encoding'].values.tolist(),
+    'top_k': 10 # top_10 candidates
+}
+res_indexer = requests.post(indexer_search, json=body)
+```
+
+```{python}
+if res_indexer.ok:
+    candidates = res_indexer.json()
+    print('Indexer OK')
+else:
+    print('ERROR with the indexer.')
+    print(res_indexer)
+    print(res_indexer.json())
+
+if len(candidates) == 0 or len(candidates[0]) == 0:
+    print('No candidates received.')
+
+selection['candidates'] = candidates
+```
+
+```{python}
+# 3 candidates
+selection['candidates'].iloc[0][:3]
+```
+
+# NIL prediction
+
+```{python}
+def prepare_for_nil_prediction(x, mention='mention'):
+    """
+    Function to prepare the features required by the nil predictor
+    """
+    c = x['candidates']
+
+    is_nil = False
+    features = {}
+
+    if len(c) == 0:
+        is_nil = True
+        return is_nil, features
+
+    is_cross = 'is_cross' in c[0] and c[0]['is_cross']
+
+    features = {}
+    if not is_cross:
+        # bi only
+        features['max_bi'] = c[0]['score']
+    else:
+        # cross
+        if 'bi_score' in c[0]:
+            features['max_bi'] = c[0]['bi_score']
+        features['max_cross'] = c[0]['score']
+
+    features['mention'] = x[mention]
+    features['title'] = c[0]['title']
+    features['topcandidates'] = c
+
+    return is_nil, features
+```
+
+```{python}
+selection[['is_nil', 'nil_features']] = selection.apply(prepare_for_nil_prediction, axis=1, result_type='expand')
+```
+
+```{python}
+selection[['is_nil', 'nil_features']].head()
+```
+
+```{python}
+## NIL prediction
+# initialize fields (default NIL)
+selection['nil_score'] = np.zeros(selection.shape[0])
+not_yet_nil = selection.query('is_nil == False')
+
+if not_yet_nil.shape[0] > 0:
+    res_nilpredictor = requests.post(nilpredictor, json=not_yet_nil['nil_features'].values.tolist())
+    if res_nilpredictor.ok:
+        print('NIL pred OK')
+        nil_scores_bi = np.array(res_nilpredictor.json()['nil_score_bi'])
+    else:
+        print('ERROR during NIL prediction')
+        print(res_nilpredictor)
+        print(res_nilpredictor.json())
+else:
+    print('ERROR. Probably the KB is emtpy')
+
+selection.loc[not_yet_nil.index, 'nil_score'] = nil_scores_bi
+
+nil_threshold = 0.5
+# if below threshold --> is NIL
+selection['is_nil'] = selection['nil_score'].apply(lambda x: x < nil_threshold)
+
+print('Estimated {} entities as NOT NIL'.format(selection.eval('is_nil == False').sum()))
+print('Estimated {} entities as NIL'.format(selection.eval('is_nil == True').sum()))
+```
+
+```{python}
+# NIL
+selection.query('~is_nil')[["Wikipedia_title", "mention", "NIL", "is_nil"]].head()
+```
+
+```{python}
+# NIL
+selection.query('is_nil')[["Wikipedia_title", "mention", "NIL", "is_nil"]].head()
+```
+
+# NIL Clustering
+
+```{python}
+## Entity Clustering
+nil_mentions = selection.query('is_nil == True')
+
+res_nilcluster = requests.post(nilcluster, json={
+        'ids': nil_mentions.index.tolist(),
+        'mentions': nil_mentions["mention"].values.tolist(),
+        'encodings': nil_mentions['encoding'].values.tolist()
+    })
+
+if not res_nilcluster.ok:
+    print('NIL cluster ERROR')
+else:
+    print('NIL cluster OK')
+
+clusters = pd.DataFrame(res_nilcluster.json())
+
+# visualize big clusters first 
+clusters = clusters.sort_values(by='nelements', ascending=False)
+```
+
+```{python}
+clusters.head()
+```
+
+# Add New entities to the New KB
+
+```{python}
+selection_new = clusters[['title', 'center']].rename(columns={'center': 'encoding', 'mode': 'wikipedia_id'})
+new_indexed = requests.post(indexer_add, json=selection_new.to_dict(orient='records'))
+
+if not new_indexed.ok:
+    print('error adding new entities')
+else:
+    print('new entities added correctly.')
+    new_indexed = new_indexed.json()
+    clusters['index_id'] = new_indexed['ids']
+    clusters['index_indexer'] = new_indexed['indexer']
+```
+
+At this point these new entities are retrieved in the indexer step so that subsequent documents that mentions them could be linked.
