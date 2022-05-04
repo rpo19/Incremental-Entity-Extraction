@@ -1,3 +1,7 @@
+# Disclaimer
+
+Tested on GNU/Linux.
+
 # Dataset
 Download the dataset or create it starting from Wikilinks Unseen-Mentions
 
@@ -88,4 +92,16 @@ no_cuda: true
 ```
 We suggest to use GPU for evaluating a dataset, while to try the pipeline CPU should be enough.
 
-# TODO ringraziamento simone repo
+# TODO
+- ringraziamento simone repo
+- citare facebook research (il codice arriva da li)
+- cosa arriva in che cartella? incremental_dataset, models
+- quali script servono ora?
+    - populate postgres
+    - train nil prediction
+    - eval_kbp
+        - refactor magari
+- notebooks: creare cartella notebooks?
+    - create dataset
+    - try pipeline
+- requirements degli scripts
