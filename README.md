@@ -1,4 +1,7 @@
 # Credits
+
+The Incremental Dataset is created starting from the WikilinksNED Unseen-Mentions from https://github.com/yasumasaonoe/ET4EL by Yasumasa Onoe and Greg Durrett.
+
 The `biencoder` and `indexer` services are derived from https://github.com/facebookresearch/BLINK by Facebook, Inc. and its affiliates.
 
 The `nilcluster` service is derived from https://github.com/montis96/EntityClustering by Simone Monti.
@@ -13,7 +16,7 @@ The pipeline requires about:
 - GPU is not mandatory but recommended (at least for running the pipeline on an entire dataset)
 
 # Project structure
-```    
+```
 .
 ├── incremental_dataset                 # the dataset (not in git)
 │   ├── delete_nil_entities.sql
