@@ -1,6 +1,7 @@
 # Incremental Entity Extraction
 
-This repositories contains the source code, scripts, and tutorials related to the paper "A Named Entity Linking Approach for Incremental Entity Extraction".
+This repositories contains the source code, scripts, and tutorials related to the paper "Evaluation of Incremental Entity Extraction
+with Background Knowledge and Entity Linking".
 
 ## Authors
 
