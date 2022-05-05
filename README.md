@@ -1,8 +1,21 @@
+# Incremental Entity Extraction
+
+This repositories contains the source code, scripts, and tutorials related to the paper "A Named Entity Linking Approach for Incremental Entity Extraction".
+
+## Authors
+
+- Riccardo Pozzi riccardo.pozzi@unimib.it
+- Federico Moiraghi federico.moiraghimotta@unimib.it
+- Matteo Palmonari matteo.palmonari@unimib.it
+- Lorenzo Sasso l.sasso2@campus.unimib.it
+
+Special thanks to Simone Monti s.monti21@campus.unimib.it
+
 # Credits
 
 The Incremental Dataset is created starting from the WikilinksNED Unseen-Mentions from https://github.com/yasumasaonoe/ET4EL by Yasumasa Onoe and Greg Durrett.
 
-The `biencoder` and `indexer` services are derived from https://github.com/facebookresearch/BLINK by Facebook, Inc. and its affiliates.
+The `biencoder` and `indexer` services are derived from https://github.com/facebookresearch/BLINK by Facebook, Inc. and its affiliates [BLINK-LICENSE](BLINK-LICENSE).
 
 The `nilcluster` service is derived from https://github.com/montis96/EntityClustering by Simone Monti.
 
@@ -298,3 +311,6 @@ Edit the JSON file `models/biencoder_wiki_large.json` setting
 no_cuda: true
 ```
 We suggest to use GPU for evaluating a dataset, while to try the pipeline CPU should be enough.
+
+# Licence
+This repository is MIT licensed. See the [LICENSE](LICENSE) file for details.
