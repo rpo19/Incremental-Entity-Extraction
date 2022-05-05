@@ -15,7 +15,7 @@ Special thanks to Simone Monti s.monti21@campus.unimib.it
 
 The Incremental Dataset is created starting from the WikilinksNED Unseen-Mentions from https://github.com/yasumasaonoe/ET4EL by Yasumasa Onoe and Greg Durrett.
 
-The `biencoder` and `indexer` services are derived from https://github.com/facebookresearch/BLINK by Facebook, Inc. and its affiliates [BLINK-LICENSE](BLINK-LICENSE).
+The `biencoder` and `indexer` services are derived from https://github.com/facebookresearch/BLINK by Facebook, Inc. and its affiliates (See [BLINK-LICENSE](BLINK-LICENSE)).
 
 The `nilcluster` service is derived from https://github.com/montis96/EntityClustering by Simone Monti.
 
