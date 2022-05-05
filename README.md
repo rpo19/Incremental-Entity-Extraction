@@ -318,7 +318,7 @@ This repository is MIT licensed. See the [LICENSE](LICENSE) file for details.
 # Cite
 ## Cite the Source Code Repository
 ```
-@article{Pozzi2022,
+@article{Pozzi2022Source,
     author = "Riccardo Pozzi and Federico Moiraghi and Matteo Palmonari and Lorenzo Sasso",
     title = "{Incremental Entity Extraction Source Code}",
     year = "2022",
@@ -330,7 +330,7 @@ This repository is MIT licensed. See the [LICENSE](LICENSE) file for details.
 
 ## Cite the Dataset
 ```
-@article{Pozzi2022,
+@article{Pozzi2022Dataset,
     author = "Riccardo Pozzi and Federico Moiraghi and Matteo Palmonari and Lorenzo Sasso",
     title = "{Incremental Entity Extraction}",
     year = "2022",
