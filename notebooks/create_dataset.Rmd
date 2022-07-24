@@ -5,7 +5,7 @@ jupyter:
       extension: .Rmd
       format_name: rmarkdown
       format_version: '1.2'
-      jupytext_version: 1.13.8
+      jupytext_version: 1.14.0
   kernelspec:
     display_name: Python 3 (ipykernel)
     language: python
@@ -14,7 +14,7 @@ jupyter:
 
 # Settings
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 # Desired percentage of NIL mentions
 perc_nil = 0.1
 
@@ -36,7 +36,7 @@ outdir = 'incremental_dataset'
 
 # Imports
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 import pandas as pd
 from tqdm import tqdm,trange
 from glob import glob
@@ -76,13 +76,13 @@ unseen_mentions/train/train_0.json
 
 # Load Original Dataset
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 train_files = glob('unseen_mentions/train/*.json')
 train_files.sort()
 train_files
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 train_df = pd.DataFrame()
 for file in tqdm(train_files):
     _temp = pd.read_json(file, lines=True)
@@ -90,11 +90,11 @@ for file in tqdm(train_files):
     train_df = pd.concat([train_df, _temp], ignore_index=True)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 dev_df = pd.read_json('unseen_mentions/dev.json', lines=True)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 test_df = pd.read_json('unseen_mentions/test.json', lines=True)
 ```
 
@@ -103,25 +103,25 @@ test_df = pd.read_json('unseen_mentions/test.json', lines=True)
 
 ### Calculate the absolute frequency with which each entity is mentioned
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 mention_frequency = train_df.groupby('wikiId').size()
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 mention_frequency
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 freq_df = pd.DataFrame(mention_frequency)
 freq_df.columns = ['freq']
 freq_df.shape
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 freq_df.head()
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 # calculate the median frequency with which all the entities are mentioned
 med_freq = np.median(freq_df['freq'])
 med_freq
@@ -129,7 +129,7 @@ med_freq
 
 Calculate the probability that each entity is NIL
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 np.random.seed(random_state)
 
 freq_df['p_formula'] = perc_nil ** (freq_df['freq'] / med_freq)
@@ -138,40 +138,39 @@ freq_df['p_uniform'] = s
 freq_df.head()
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 freq_df['NIL'] = freq_df['p_uniform'] < freq_df['p_formula']
 freq_df.head()
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 print('N# NIL:', freq_df.eval('NIL').sum(), 'percentage:', freq_df.eval('NIL').sum() / freq_df.shape[0] * 100, '%')
 ```
 
-```{python}
-#Imposto la frequenza dei NIL = 0 in modo che poi quando farò la suddivisione in batch stratificata ci sia anche proporzionale tra i 
-#NIL in ogni batch # TODO traduco
+```{python vscode={'languageId': 'python'}}
+# Setting NIL freq to 0 so that when we split in batches each batch has the same number of NILs
 freq_df.loc[freq_df['NIL'] == True, 'freq'] = 0
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 train_df
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 train_df_merged = train_df.join(freq_df, how='left', on='wikiId')
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 print('Percentage of NIL mentions in train:', train_df_merged.eval('NIL').sum() / train_df_merged.shape[0] * 100)
 ```
 
 # Propagate NIL mentions in test and dev
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 dev_df_merged = dev_df.join(freq_df, how='left', on='wikiId')
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 dev_df_merged['p_formula'] = dev_df_merged['p_formula'].fillna(-1)
 dev_df_merged['p_uniform'] = dev_df_merged['p_uniform'].fillna(-1)
 dev_df_merged['NIL'] = dev_df_merged['NIL'].fillna(False)
@@ -179,50 +178,50 @@ dev_df_merged['NIL'] = dev_df_merged['NIL'].fillna(False)
 
 Compute entity frequencies in dev for a correct sampling
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 mention_frequency_dev = dev_df_merged.query('~NIL').groupby('wikiId').size()
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 mention_frequency_dev
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 freq_df_dev = pd.DataFrame(mention_frequency_dev)
 freq_df_dev.columns = ['freq']
 freq_df_dev.shape
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 freq_df_dev.head()
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 dev_df_merged = dev_df_merged.drop(columns=['freq']).join(freq_df_dev, how='left', on='wikiId')
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 # set NIL entities freq to 0 for stratifying the NIL class
 dev_df_merged.loc[dev_df_merged['NIL'], 'freq'] = 0
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 dev_df_merged['freq'] = dev_df_merged['freq'].astype(int)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 assert not dev_df_merged['NIL'].isna().any()
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 print('dev NIL N#:', dev_df_merged.eval('NIL').sum(), 'Percentage:', dev_df_merged.eval('NIL').sum() / dev_df_merged.shape[0] * 100)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 test_df_merged = test_df.join(freq_df, how='left', on='wikiId')
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 test_df_merged['p_formula'] = test_df_merged['p_formula'].fillna(-1)
 test_df_merged['p_uniform'] = test_df_merged['p_uniform'].fillna(-1)
 test_df_merged['NIL'] = test_df_merged['NIL'].fillna(False)
@@ -230,72 +229,72 @@ test_df_merged['NIL'] = test_df_merged['NIL'].fillna(False)
 
 Compute entity frequencies in test for a correct sampling
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 mention_frequency_test = test_df_merged.query('~NIL').groupby('wikiId').size()
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 mention_frequency_test
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 freq_df_test = pd.DataFrame(mention_frequency_test)
 freq_df_test.columns = ['freq']
 freq_df_test.shape
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 freq_df_test.head()
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 test_df_merged = test_df_merged.drop(columns=['freq']).join(freq_df_test, how='left', on='wikiId')
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 # set NIL entities freq to 0 for stratifying the NIL class
 test_df_merged.loc[test_df_merged['NIL'], 'freq'] = 0
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 test_df_merged['freq'] = test_df_merged['freq'].astype(int)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 assert not test_df_merged['NIL'].isna().any()
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 print('test NIL N#:', test_df_merged.eval('NIL').sum(), 'Percentage:', test_df_merged.eval('NIL').sum() / test_df_merged.shape[0] * 100)
 ```
 
 # Transplant
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 # I want 500 NIL in dev and test
 # I want 100k total in both dev and test
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 train_unique = train_df[['word', 'wikiId']].drop_duplicates(keep='first')
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 dev_unique = dev_df[['word', 'wikiId']].drop_duplicates(keep='first')
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 test_unique = test_df[['word', 'wikiId']].drop_duplicates(keep='first')
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 # ensure no duplicates
 assert not train_unique.duplicated().any()
 assert not dev_unique.duplicated().any()
 assert not test_unique.duplicated().any()
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 # ensure unseen mentions holds
 assert not pd.concat([train_unique, dev_unique]).duplicated().any()
 assert not pd.concat([train_unique, test_unique]).duplicated().any()
@@ -304,79 +303,26 @@ assert not pd.concat([dev_unique, test_unique]).duplicated().any()
 
 ## NIL
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 # prendo n menzioni NIL dal train che non siano nel dev/test e ce le metto
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 train_df_nil = train_df_merged.query('NIL')
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 desired_nil_total = desired_nil * n_batch
 nil_to_add_dev = desired_nil_total - dev_df_merged.eval('NIL').sum()
 nil_to_add_dev
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 nil_to_add_test = desired_nil_total - test_df_merged.eval('NIL').sum()
 nil_to_add_test
 ```
 
-```{python}
-# TODO remove
-def get_sample_with_sum(df, sum_, random_state):
-    """
-    Gets a sample which sums to sum_
-    """
-    #print(sum_, 'left')
-    if sum_ == 0:
-        # end of recursion
-        return []
-    if sum_ < 0:
-        # cannot find subset
-        raise Exception('Received negative sum.')
-
-    # check there exists a sample < sum_
-    assert (df['count'] <= sum_).any()
-    current_sum = 0
-    
-    # filter df to contain only items < sum_
-    df = df[df['count'] <= sum_]
-    recursive_result = None
-    item = None
-
-    """
-    If we pick an item with which is impossible to reach sum_:
-    pick another item
-    """
-    while recursive_result is None:
-        if df.shape[0] == 0:
-            # cannot find a subset
-            print('return [] cannot')
-            return None
-
-        # pick an item
-        item = df.sample(n=1, random_state=random_state)
-        item_number = item['count'].values[0]
-        random_state += 1
-        
-       #print('found', item_number, 'at', sum_)
-
-        remainder = sum_ - item_number
-        
-        # get a subset which sums to remainder
-        # we pass df without the item just extracted
-        recursive_result = get_sample_with_sum(df.drop(item.index), remainder, random_state)
-        
-        if recursive_result is None:
-            # cannot find subset with this item: discard item
-            df = df.drop(item.index)
-    
-    return item.index.union(recursive_result)
-```
-
-```{python}
+```{python vscode={'languageId': 'python'}}
 def get_subset_sum_ge(df, sum_, random_state):
     """
     Gets a subset whose sum is greater than sum_
@@ -409,19 +355,19 @@ def get_subset_sum_ge(df, sum_, random_state):
     return subset
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 train_df_nil_unique_count = pd.DataFrame(
     train_df_nil[['wikiId', 'word']].value_counts(), columns=['count']).reset_index()
 train_df_nil_unique_count.head()
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 sample_transplant_to_dev = get_subset_sum_ge(train_df_nil_unique_count, nil_to_add_dev, random_state)
 print(train_df_nil_unique_count.loc[sample_transplant_to_dev]['count'].sum(), '>=', nil_to_add_dev)
 assert train_df_nil_unique_count.loc[sample_transplant_to_dev]['count'].sum() >= nil_to_add_dev
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 # remove sample_transplant to dev before extracting a sample for test
 train_df_nil_unique_count_no_dev = train_df_nil_unique_count.drop(sample_transplant_to_dev)
 sample_transplant_to_test = get_subset_sum_ge(train_df_nil_unique_count_no_dev, nil_to_add_test, random_state+10)
@@ -434,83 +380,83 @@ assert train_df_nil_unique_count_no_dev.loc[sample_transplant_to_test]['count'].
 
 ### Dev
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 mentions_to_dev = train_df_nil.join(
     train_df_nil_unique_count.loc[sample_transplant_to_dev].set_index(['wikiId', 'word']),
     on=['wikiId', 'word'], how='inner')
 mentions_to_dev = mentions_to_dev.drop(columns=['count'])
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 dev_df_transplant = pd.concat([dev_df_merged, mentions_to_dev], ignore_index=True)
 dev_df_transplant = dev_df_transplant.sample(frac=1, random_state=random_state) # randomize
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 dev_df_transplant.shape
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 print(dev_df_transplant.eval('NIL').sum(), '>=', desired_nil_total)
 assert dev_df_transplant.eval('NIL').sum() >= desired_nil_total
 ```
 
 ### Test
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 mentions_to_test = train_df_nil.join(
     train_df_nil_unique_count.loc[sample_transplant_to_test].set_index(['wikiId', 'word']),
     on=['wikiId', 'word'], how='inner')
 mentions_to_test = mentions_to_test.drop(columns=['count'])
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 test_df_transplant = pd.concat([test_df_merged, mentions_to_test], ignore_index=True)
 test_df_transplant = test_df_transplant.sample(frac=1, random_state=random_state) # randomize
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 test_df_transplant.shape
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 print(test_df_transplant.eval('NIL').sum(), '>=', desired_nil_total)
 assert test_df_transplant.eval('NIL').sum() >= desired_nil_total
 ```
 
 ### Remove from train
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 train_df_transplant = train_df_merged.drop(mentions_to_dev.index.union(mentions_to_test.index))
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 train_unique_transplant = train_df_transplant[['word', 'wikiId']].drop_duplicates(keep='first')
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 dev_unique_transplant = dev_df_transplant[['word', 'wikiId']].drop_duplicates(keep='first')
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 test_unique_transplant = test_df_transplant[['word', 'wikiId']].drop_duplicates(keep='first')
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 # ensure no duplicates
 assert not train_unique_transplant.duplicated().any()
 assert not dev_unique_transplant.duplicated().any()
 assert not test_unique_transplant.duplicated().any()
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 # ensure unseen mentions holds
 assert not pd.concat([train_unique_transplant, dev_unique_transplant]).duplicated().any()
 assert not pd.concat([train_unique_transplant, test_unique_transplant]).duplicated().any()
 assert not pd.concat([dev_unique_transplant, test_unique_transplant]).duplicated().any()
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 print('Train', train_df_transplant.shape)
 print('Dev', dev_df_transplant.shape)
 print('Test', test_df_transplant.shape)
@@ -518,227 +464,224 @@ print('Test', test_df_transplant.shape)
 
 # Transplant not-NIL mentions
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 # prendo n menzioni NIL dal train che non siano nel dev/test e ce le metto
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 train_df_not_nil = train_df_merged.query('~NIL')
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 desired_total = dev_test_desired_batch_size * n_batch
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 not_nil_to_add_dev = desired_total - dev_df_transplant.shape[0]
 not_nil_to_add_dev
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 not_nil_to_add_test = desired_total - test_df_transplant.shape[0]
 not_nil_to_add_test
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 train_df_not_nil_unique_count = pd.DataFrame(
     train_df_not_nil[['wikiId', 'word']].value_counts(), columns=['count']).reset_index()
 train_df_not_nil_unique_count.head()
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 sample_transplant_to_dev_not_nil = get_subset_sum_ge(train_df_not_nil_unique_count, not_nil_to_add_dev, random_state)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 print(train_df_not_nil_unique_count.loc[sample_transplant_to_dev_not_nil]['count'].sum(), ">=", not_nil_to_add_dev)
 assert train_df_not_nil_unique_count.loc[sample_transplant_to_dev_not_nil]['count'].sum() >= not_nil_to_add_dev
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 # remove sample_transplant to dev before extracting a sample for test
 train_df_not_nil_unique_count_no_dev = train_df_not_nil_unique_count.drop(sample_transplant_to_dev_not_nil)
 sample_transplant_to_test_not_nil = get_subset_sum_ge(train_df_not_nil_unique_count_no_dev, not_nil_to_add_test, random_state+10)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 print(train_df_not_nil_unique_count_no_dev.loc[sample_transplant_to_test_not_nil]['count'].sum(), ">=", not_nil_to_add_test)
 assert train_df_not_nil_unique_count_no_dev.loc[sample_transplant_to_test_not_nil]['count'].sum() >= not_nil_to_add_test
 ```
 
 ### Dev
 
-```{python}
-# TODO variable name collision with NIL transplant
+```{python vscode={'languageId': 'python'}}
 mentions_to_dev_not_nil = train_df_not_nil.join(
     train_df_not_nil_unique_count.loc[sample_transplant_to_dev_not_nil].set_index(['wikiId', 'word']),
     on=['wikiId', 'word'], how='inner')
 mentions_to_dev_not_nil = mentions_to_dev_not_nil.drop(columns=['count'])
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 assert not mentions_to_dev_not_nil.eval('NIL').any()
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 dev_df_transplant_final = pd.concat([dev_df_transplant, mentions_to_dev_not_nil], ignore_index=True)
 dev_df_transplant_final = dev_df_transplant_final.sample(frac=1, random_state=random_state) # randomize
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 dev_df_transplant_final.shape
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 assert dev_df_transplant_final.eval('NIL').sum() >= desired_nil_total
 assert dev_df_transplant_final.shape[0] >= desired_total
 ```
 
 ### Test
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 mentions_to_test_not_nil = train_df_not_nil.join(
     train_df_not_nil_unique_count.loc[sample_transplant_to_test_not_nil].set_index(['wikiId', 'word']),
     on=['wikiId', 'word'], how='inner')
 mentions_to_test_not_nil = mentions_to_test_not_nil.drop(columns=['count'])
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 test_df_transplant_final = pd.concat([test_df_transplant, mentions_to_test_not_nil], ignore_index=True)
 test_df_transplant_final = test_df_transplant_final.sample(frac=1, random_state=random_state) # randomize
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 test_df_transplant_final.shape
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 assert test_df_transplant_final.eval('NIL').sum() >= desired_nil_total
 assert test_df_transplant_final.shape[0] >= desired_total
 ```
 
 ### Remove from train
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 train_df_transplant_final = train_df_transplant.drop(mentions_to_dev_not_nil.index.union(mentions_to_test_not_nil.index))
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 train_unique_transplant_final = train_df_transplant_final[['word', 'wikiId']].drop_duplicates(keep='first')
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 dev_unique_transplant_final = dev_df_transplant_final[['word', 'wikiId']].drop_duplicates(keep='first')
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 test_unique_transplant_final = test_df_transplant_final[['word', 'wikiId']].drop_duplicates(keep='first')
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 # ensure no duplicates
 assert not train_unique_transplant_final.duplicated().any()
 assert not dev_unique_transplant_final.duplicated().any()
 assert not test_unique_transplant_final.duplicated().any()
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 # ensure unseen mentions holds
 assert not pd.concat([train_unique_transplant_final, dev_unique_transplant_final]).duplicated().any()
 assert not pd.concat([train_unique_transplant_final, test_unique_transplant_final]).duplicated().any()
 assert not pd.concat([dev_unique_transplant_final, test_unique_transplant_final]).duplicated().any()
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 print('Train', train_df_transplant_final.shape)
 print('Dev', dev_df_transplant_final.shape)
 print('Test', test_df_transplant_final.shape)
 ```
 
 # Remove samples from dev test to reach the desired number
+If required, here it is possible to remove samples from the dev and test sets to reach a precise number of samples.
 
-```{python}
-# TODO eventually
-```
 
 # Divide train in batches
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 skf = StratifiedKFold(n_splits=n_batch, shuffle=True, random_state=random_state)
 ```
 
 ## Train
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 train_df_transplant_final = train_df_transplant_final.reset_index(drop=True)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 train_batch_indexes = []
 # the NIL class has freq = 0 so it is fairly distributed among the batches
 for _, _index in skf.split(np.zeros(train_df_transplant_final.shape[0]), train_df_transplant_final['freq']):
     train_batch_indexes.append(_index)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 for i, batch in enumerate(train_batch_indexes):
     train_df_transplant_final.loc[batch, 'batch'] = i
 train_df_transplant_final['batch'] = train_df_transplant_final['batch'].astype(int)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 train_df_transplant_final.head()
 ```
 
 ## Dev
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 dev_df_transplant_final = dev_df_transplant_final.reset_index(drop=True)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 dev_batch_indexes = []
 # the NIL class has freq = 0 so it is fairly distributed among the batches
 for _, _index in skf.split(np.zeros(dev_df_transplant_final.shape[0]), dev_df_transplant_final['freq']):
     dev_batch_indexes.append(_index)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 for i, batch in enumerate(dev_batch_indexes):
     dev_df_transplant_final.loc[batch, 'batch'] = i
 dev_df_transplant_final['batch'] = dev_df_transplant_final['batch'].astype(int)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 dev_df_transplant_final.head()
 ```
 
 ## Test
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 test_df_transplant_final = test_df_transplant_final.reset_index(drop=True)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 test_batch_indexes = []
 # the NIL class has freq = 0 so it is fairly distributed among the batches
 for _, _index in skf.split(np.zeros(test_df_transplant_final.shape[0]), test_df_transplant_final['freq']):
     test_batch_indexes.append(_index)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 for i, batch in enumerate(test_batch_indexes):
     test_df_transplant_final.loc[batch, 'batch'] = i
 test_df_transplant_final['batch'] = test_df_transplant_final['batch'].astype(int)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 test_df_transplant_final.head()
 ```
 
 # Prepare for BLINK
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 train_df_transplant_final = train_df_transplant_final.rename(columns = {
     'left_context_text': 'context_left',
     'word': 'mention',
@@ -751,7 +694,7 @@ train_df_transplant_final = train_df_transplant_final.rename(columns = {
 })
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 dev_df_transplant_final = dev_df_transplant_final.rename(columns = {
     'left_context_text': 'context_left',
     'word': 'mention',
@@ -764,7 +707,7 @@ dev_df_transplant_final = dev_df_transplant_final.rename(columns = {
 })
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 test_df_transplant_final = test_df_transplant_final.rename(columns = {
     'left_context_text': 'context_left',
     'word': 'mention',
@@ -779,7 +722,7 @@ test_df_transplant_final = test_df_transplant_final.rename(columns = {
 
 # Save to disk
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 train_basedir = os.path.join(outdir, 'train')
 os.makedirs(train_basedir, exist_ok=True)
 print('Saving train...')
@@ -792,7 +735,7 @@ for batch in range(n_batch):
             fd.write('\n')
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 dev_basedir = os.path.join(outdir, 'dev')
 os.makedirs(dev_basedir, exist_ok=True)
 print('Saving dev...')
@@ -805,7 +748,7 @@ for batch in range(n_batch):
             fd.write('\n')
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 test_basedir = os.path.join(outdir, 'test')
 os.makedirs(test_basedir, exist_ok=True)
 print('Saving test...')
@@ -820,11 +763,11 @@ for batch in range(n_batch):
 
 # Statistics
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 report = []
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 for batch in trange(n_batch):
     train_batch = train_df_transplant_final[train_df_transplant_final['batch'] == batch]
     dev_batch = dev_df_transplant_final[dev_df_transplant_final['batch'] == batch]
@@ -893,7 +836,7 @@ for batch in trange(n_batch):
     report.append(batch_report)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 all_dataset = {}
 all_dataset['batch'] = 'ALL'
 
@@ -940,7 +883,7 @@ all_dataset['test_nil_mentions_found_in_previous_batch'] = 0
 report.append(all_dataset)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 original_dataset = {}
 original_dataset['batch'] = 'ORIGINAL'
 
@@ -987,25 +930,25 @@ original_dataset['test_nil_mentions_found_in_previous_batch'] = 0
 report.append(original_dataset)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 report_df = pd.DataFrame(report)
 report_df
 ```
 
 ## Save statistics
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 stats_basedir = os.path.join(outdir, 'statistics')
 os.makedirs(stats_basedir, exist_ok=True)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 report_df.to_csv(os.path.join(stats_basedir, 'statistics.csv'))
 ```
 
  # Remove NIL entities from the KB
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 NIL_entities = []
 NIL_entities.extend(
     train_df_transplant_final.query('NIL')['Wikipedia_ID'].tolist())
@@ -1015,17 +958,17 @@ NIL_entities.extend(
     test_df_transplant_final.query('NIL')['Wikipedia_ID'].tolist())
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 NIL_entities = set(NIL_entities) # remove duplicates
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 sql_list = ",".join(str(i) for i in NIL_entities)
-indexer = 10 # TODO ensure to put the correct indexer
+indexer = 10 # ensure to put the correct indexer
 sql_query = 'DELETE FROM entities WHERE indexer = {} AND wikipedia_id in ({});'.format(indexer, sql_list)
 ```
 
-```{python}
+```{python vscode={'languageId': 'python'}}
 with open(os.path.join(outdir, 'delete_nil_entities.sql'), 'w') as fd:
     fd.write(sql_query + '\n')
 ```
