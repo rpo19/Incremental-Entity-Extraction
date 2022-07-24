@@ -5,7 +5,7 @@ jupyter:
       extension: .Rmd
       format_name: rmarkdown
       format_version: '1.2'
-      jupytext_version: 1.14.0
+      jupytext_version: 1.13.8
   kernelspec:
     display_name: Python 3 (ipykernel)
     language: python
@@ -604,56 +604,10 @@ print('Test', test_df_transplant_final.shape)
 If required, here it is possible to remove samples from the dev and test sets to reach a precise number of samples.
 
 
-# Divide train in batches
+# Divide test in batches
 
 ```{python vscode={'languageId': 'python'}}
 skf = StratifiedKFold(n_splits=n_batch, shuffle=True, random_state=random_state)
-```
-
-## Train
-
-```{python vscode={'languageId': 'python'}}
-train_df_transplant_final = train_df_transplant_final.reset_index(drop=True)
-```
-
-```{python vscode={'languageId': 'python'}}
-train_batch_indexes = []
-# the NIL class has freq = 0 so it is fairly distributed among the batches
-for _, _index in skf.split(np.zeros(train_df_transplant_final.shape[0]), train_df_transplant_final['freq']):
-    train_batch_indexes.append(_index)
-```
-
-```{python vscode={'languageId': 'python'}}
-for i, batch in enumerate(train_batch_indexes):
-    train_df_transplant_final.loc[batch, 'batch'] = i
-train_df_transplant_final['batch'] = train_df_transplant_final['batch'].astype(int)
-```
-
-```{python vscode={'languageId': 'python'}}
-train_df_transplant_final.head()
-```
-
-## Dev
-
-```{python vscode={'languageId': 'python'}}
-dev_df_transplant_final = dev_df_transplant_final.reset_index(drop=True)
-```
-
-```{python vscode={'languageId': 'python'}}
-dev_batch_indexes = []
-# the NIL class has freq = 0 so it is fairly distributed among the batches
-for _, _index in skf.split(np.zeros(dev_df_transplant_final.shape[0]), dev_df_transplant_final['freq']):
-    dev_batch_indexes.append(_index)
-```
-
-```{python vscode={'languageId': 'python'}}
-for i, batch in enumerate(dev_batch_indexes):
-    dev_df_transplant_final.loc[batch, 'batch'] = i
-dev_df_transplant_final['batch'] = dev_df_transplant_final['batch'].astype(int)
-```
-
-```{python vscode={'languageId': 'python'}}
-dev_df_transplant_final.head()
 ```
 
 ## Test
@@ -726,26 +680,20 @@ test_df_transplant_final = test_df_transplant_final.rename(columns = {
 train_basedir = os.path.join(outdir, 'train')
 os.makedirs(train_basedir, exist_ok=True)
 print('Saving train...')
-for batch in range(n_batch):
-    print('Batch {} of {}'.format(batch + 1, n_batch))
-    train_batch = train_df_transplant_final[train_df_transplant_final['batch'] == batch]
-    with open(os.path.join(train_basedir, 'train_{}.jsonl'.format(batch)), 'w') as fd:
-        for i, row in tqdm(train_batch.iterrows(), total=train_batch.shape[0]):
-            fd.write(row.to_json())
-            fd.write('\n')
+with open(os.path.join(train_basedir, 'train.jsonl'), 'w') as fd:
+    for i, row in tqdm(train_df_transplant_final.iterrows(), total=train_df_transplant_final.shape[0]):
+        fd.write(row.to_json())
+        fd.write('\n')
 ```
 
 ```{python vscode={'languageId': 'python'}}
 dev_basedir = os.path.join(outdir, 'dev')
 os.makedirs(dev_basedir, exist_ok=True)
 print('Saving dev...')
-for batch in range(n_batch):
-    print('Batch {} of {}'.format(batch + 1, n_batch))
-    dev_batch = dev_df_transplant_final[dev_df_transplant_final['batch'] == batch]
-    with open(os.path.join(dev_basedir, 'dev_{}.jsonl'.format(batch)), 'w') as fd:
-        for i, row in tqdm(dev_batch.iterrows(), total=dev_batch.shape[0]):
-            fd.write(row.to_json())
-            fd.write('\n')
+with open(os.path.join(dev_basedir, 'dev.jsonl'), 'w') as fd:
+    for i, row in tqdm(dev_df_transplant_final.iterrows(), total=dev_df_transplant_final.shape[0]):
+        fd.write(row.to_json())
+        fd.write('\n')
 ```
 
 ```{python vscode={'languageId': 'python'}}
@@ -769,58 +717,30 @@ report = []
 
 ```{python vscode={'languageId': 'python'}}
 for batch in trange(n_batch):
-    train_batch = train_df_transplant_final[train_df_transplant_final['batch'] == batch]
-    dev_batch = dev_df_transplant_final[dev_df_transplant_final['batch'] == batch]
     test_batch = test_df_transplant_final[test_df_transplant_final['batch'] == batch]
     
     batch_report = {}
     batch_report['batch'] = batch
     
     # mentions
-    batch_report['train_mentions'] = train_batch.shape[0]
-    batch_report['dev_mentions'] = dev_batch.shape[0]
     batch_report['test_mentions'] = test_batch.shape[0]
 
     # entities
-    batch_report['train_entities'] = train_batch['Wikipedia_ID'].drop_duplicates().shape[0]
-    batch_report['dev_entities'] = dev_batch['Wikipedia_ID'].drop_duplicates().shape[0]
     batch_report['test_entities'] = test_batch['Wikipedia_ID'].drop_duplicates().shape[0]
 
     # NIL mentions
-    batch_report['train_nil_mentions'] = train_batch.eval('NIL').sum()
-    batch_report['dev_nil_mentions'] = dev_batch.eval('NIL').sum()
     batch_report['test_nil_mentions'] = test_batch.eval('NIL').sum()
     
     # not-NIL mentions
-    batch_report['train_not_nil_mentions'] = batch_report['train_mentions'] - batch_report['train_nil_mentions']
-    batch_report['dev_not_nil_mentions'] = batch_report['dev_mentions'] - batch_report['dev_nil_mentions']
     batch_report['test_not_nil_mentions'] = batch_report['test_mentions'] - batch_report['test_nil_mentions']
 
     # NIL entities
-    batch_report['train_nil_entities'] = train_batch.query('NIL')['Wikipedia_ID'].drop_duplicates().shape[0]
-    batch_report['dev_nil_entities'] = dev_batch.query('NIL')['Wikipedia_ID'].drop_duplicates().shape[0]
     batch_report['test_nil_entities'] = test_batch.query('NIL')['Wikipedia_ID'].drop_duplicates().shape[0]
     
     # not-NIL entities
-    batch_report['train_not_nil_entities'] = batch_report['train_entities'] - batch_report['train_nil_entities']
-    batch_report['dev_not_nil_entities'] = batch_report['dev_entities'] - batch_report['dev_nil_entities']
     batch_report['test_not_nil_entities'] = batch_report['test_entities'] - batch_report['test_nil_entities']
     
     # NIL entities present in a previous batch
-    train_indexes = set(train_batch.query('NIL')['Wikipedia_ID'].drop_duplicates()
-           ).intersection(
-            # the set of all the nil entities found in the previous batches
-            set(train_df_transplant_final.query('NIL and batch < {}'.format(batch))['Wikipedia_ID'].drop_duplicates())
-        )
-    batch_report['train_nil_entities_found_in_previous_batch'] = len(train_indexes)
-    
-    dev_indexes = set(dev_batch.query('NIL')['Wikipedia_ID'].drop_duplicates()
-           ).intersection(
-            # the set of all the nil entities found in the previous batches
-            set(dev_df_transplant_final.query('NIL and batch < {}'.format(batch))['Wikipedia_ID'].drop_duplicates())
-        )
-    batch_report['dev_nil_entities_found_in_previous_batch'] = len(dev_indexes)
-    
     test_indexes = set(test_batch.query('NIL')['Wikipedia_ID'].drop_duplicates()
            ).intersection(
             # the set of all the nil entities found in the previous batches
@@ -829,8 +749,6 @@ for batch in trange(n_batch):
     batch_report['test_nil_entities_found_in_previous_batch'] = len(test_indexes)
     
     # NIL mentions present in a previous batch
-    batch_report['train_nil_mentions_found_in_previous_batch'] = train_batch['Wikipedia_ID'].isin(train_indexes).sum()
-    batch_report['dev_nil_mentions_found_in_previous_batch'] = dev_batch['Wikipedia_ID'].isin(dev_indexes).sum()
     batch_report['test_nil_mentions_found_in_previous_batch'] = test_batch['Wikipedia_ID'].isin(test_indexes).sum()
     
     report.append(batch_report)
