@@ -275,28 +275,47 @@ In this example we train using the first batch of train from the incremental dat
 
 Prepare data for the NIL prediction study/training: we need to get linking scores. Ensure the pipeline is up, then run
 ```
-python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_0.jsonl
-python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_1.jsonl
-python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_2.jsonl
-python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_3.jsonl
-python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_4.jsonl
-python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_5.jsonl
-python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_6.jsonl
-python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_7.jsonl
-python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_8.jsonl
-python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_9.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred incremental_dataset/train/train_0.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred incremental_dataset/train/train_1.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred incremental_dataset/train/train_2.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred incremental_dataset/train/train_3.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred incremental_dataset/train/train_4.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred incremental_dataset/train/train_5.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred incremental_dataset/train/train_6.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred incremental_dataset/train/train_7.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred incremental_dataset/train/train_8.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred incremental_dataset/train/train_9.jsonl
 
-python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/dev/dev.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred incremental_dataset/dev/dev.jsonl
 ```
-You should see two files in the folder `output/prepare_for_nil_study`:
+You should see the output files in the folder `output/prepare_for_nil_study`:
 ```
-train_outdata.pickle
+train_0_outdata.pickle
+train_1_outdata.pickle
+train_2_outdata.pickle
+train_3_outdata.pickle
+train_4_outdata.pickle
+train_5_outdata.pickle
+train_6_outdata.pickle
+train_7_outdata.pickle
+train_8_outdata.pickle
+train_9_outdata.pickle
 dev_outdata.pickle
 ```
 
 Then run the study and train the models with:
 ```
-python scripts/feature_ablation_study.py --train-path output/prepare_for_nil_study/train_outdata.pickle --test-path output/prepare_for_nil_study/dev_outdata.pickle --output-path nilprediction_output
+python scripts/feature_ablation_study.py --train-path output/prepare_for_nil_study/train_0_outdata.pickle \
+--train-path output/prepare_for_nil_study/train_1_outdata.pickle \
+--train-path output/prepare_for_nil_study/train_2_outdata.pickle \
+--train-path output/prepare_for_nil_study/train_3_outdata.pickle \
+--train-path output/prepare_for_nil_study/train_4_outdata.pickle \
+--train-path output/prepare_for_nil_study/train_5_outdata.pickle \
+--train-path output/prepare_for_nil_study/train_6_outdata.pickle \
+--train-path output/prepare_for_nil_study/train_7_outdata.pickle \
+--train-path output/prepare_for_nil_study/train_8_outdata.pickle \
+--train-path output/prepare_for_nil_study/train_9_outdata.pickle \
+--test-path output/prepare_for_nil_study/dev_outdata.pickle --output-path nilprediction_output
 ```
 
 The `nilprediction_output` folder will contain:
@@ -329,7 +348,7 @@ This repository is MIT licensed. See the [LICENSE](LICENSE) file for details.
 ## Cite the Source Code Repository
 ```
 @article{Pozzi2022Source,
-    author = "Riccardo Pozzi and Federico Moiraghi and Matteo Palmonari and Lorenzo Sasso",
+    author = "Riccardo Pozzi and Federico Moiraghi and Matteo Palmonari and Fausto Lodi",
     title = "{Incremental Entity Extraction Source Code}",
     year = "2022",
     month = "5",
@@ -341,7 +360,7 @@ This repository is MIT licensed. See the [LICENSE](LICENSE) file for details.
 ## Cite the Dataset
 ```
 @article{Pozzi2022Dataset,
-    author = "Riccardo Pozzi and Federico Moiraghi and Matteo Palmonari and Lorenzo Sasso",
+    author = "Riccardo Pozzi and Federico Moiraghi and Matteo Palmonari and Fausto Lodi",
     title = "{Incremental Entity Extraction}",
     year = "2022",
     month = "5",
