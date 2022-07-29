@@ -8,9 +8,9 @@ with Background Knowledge and Entity Linking".
 - Riccardo Pozzi riccardo.pozzi@unimib.it
 - Federico Moiraghi federico.moiraghimotta@unimib.it
 - Matteo Palmonari matteo.palmonari@unimib.it
-- Lorenzo Sasso l.sasso2@campus.unimib.it
+- Fausto Lodi fausto.lodi@unimib.it
 
-Special thanks to Simone Monti s.monti21@campus.unimib.it
+Special thanks to Lorenzo Sasso (l.sasso2@campus.unimib.it) and Simone Monti (s.monti21@campus.unimib.it).
 
 # Credits
 
