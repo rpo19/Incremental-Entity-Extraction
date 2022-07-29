@@ -604,10 +604,40 @@ print('Test', test_df_transplant_final.shape)
 If required, here it is possible to remove samples from the dev and test sets to reach a precise number of samples.
 
 
-# Divide test in batches
+# Divide train and test in batches
+Train is divided in batch similarly as it is in the original dataset to avoid a single very big file.
 
 ```{python vscode={'languageId': 'python'}}
 skf = StratifiedKFold(n_splits=n_batch, shuffle=True, random_state=random_state)
+```
+
+# Train
+
+```{python}
+train_df_transplant_final = train_df_transplant_final.reset_index(drop=True)
+```
+
+```{python}
+train_batch_indexes = []                                                                                                                                              
+# the NIL class has freq = 0 so it is fairly distributed among the batches                                                                                            
+for _, _index in skf.split(np.zeros(train_df_transplant_final.shape[0]), train_df_transplant_final['freq']):                                                          
+    train_batch_indexes.append(_index)
+```
+
+```{python}
+for i, batch in enumerate(train_batch_indexes):                                                                                                                       
+    train_df_transplant_final.loc[batch, 'batch'] = i                                                                                                                 
+train_df_transplant_final['batch'] = train_df_transplant_final['batch'].astype(int)
+```
+
+```{python}
+train_df_transplant_final.head()
+```
+
+# Reset Dev index
+
+```{python}
+dev_df_transplant_final = dev_df_transplant_final.reset_index(drop=True)
 ```
 
 ## Test
@@ -680,10 +710,13 @@ test_df_transplant_final = test_df_transplant_final.rename(columns = {
 train_basedir = os.path.join(outdir, 'train')
 os.makedirs(train_basedir, exist_ok=True)
 print('Saving train...')
-with open(os.path.join(train_basedir, 'train.jsonl'), 'w') as fd:
-    for i, row in tqdm(train_df_transplant_final.iterrows(), total=train_df_transplant_final.shape[0]):
-        fd.write(row.to_json())
-        fd.write('\n')
+for batch in range(n_batch):
+    print('Batch {} of {}'.format(batch + 1, n_batch))
+    train_batch = train_df_transplant_final[train_df_transplant_final['batch'] == batch]
+    with open(os.path.join(train_basedir, 'train_{}.jsonl'.format(batch)), 'w') as fd:
+        for i, row in tqdm(train_batch.iterrows(), total=train_batch.shape[0]):
+            fd.write(row.to_json())
+            fd.write('\n')
 ```
 
 ```{python vscode={'languageId': 'python'}}

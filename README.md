@@ -276,18 +276,27 @@ In this example we train using the first batch of train from the incremental dat
 Prepare data for the NIL prediction study/training: we need to get linking scores. Ensure the pipeline is up, then run
 ```
 python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_0.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_1.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_2.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_3.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_4.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_5.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_6.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_7.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_8.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/train/train_9.jsonl
 
-python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/dev/dev_0.jsonl
+python scripts/eval_kbp.py --save-path output/prepare_for_nil_study --prepare-for-nil-pred --no-reset incremental_dataset/dev/dev.jsonl
 ```
 You should see two files in the folder `output/prepare_for_nil_study`:
 ```
-train_0_outdata.pickle
-dev_0_outdata.pickle
+train_outdata.pickle
+dev_outdata.pickle
 ```
 
 Then run the study and train the models with:
 ```
-python scripts/feature_ablation_study.py --train-path output/prepare_for_nil_study/train_0_outdata.pickle --test-path output/prepare_for_nil_study/dev_0_outdata.pickle --output-path nilprediction_output
+python scripts/feature_ablation_study.py --train-path output/prepare_for_nil_study/train_outdata.pickle --test-path output/prepare_for_nil_study/dev_outdata.pickle --output-path nilprediction_output
 ```
 
 The `nilprediction_output` folder will contain:
