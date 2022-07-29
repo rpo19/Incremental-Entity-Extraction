@@ -72,10 +72,13 @@ def _bc_get_stats(x, remove_correct=False, scores_col='scores', nns_col='nns', l
         i_correct = list(nns).index(x[labels_col])
         correct = scores[i_correct]
 
+    second = sorted(scores, reverse=True)[1]
+
     _stats = {
         "correct": correct,
         "max": max(scores),
-        "second": sorted(scores, reverse=True)[1],
+        "second": second,
+        "secondiff": max(scores) - second,
         "min": min(scores),
         "mean": statistics.mean(scores),
         "median": statistics.median(scores),
