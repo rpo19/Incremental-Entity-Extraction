@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from tqdm import tqdm
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
@@ -20,7 +21,7 @@ import sys
 import click
 
 @click.command()
-@click.option('--train-path', required=True, type=str, help='Train dataset in pickle.')
+@click.option('--train-path', required=True, help='Train dataset in pickle (eventually multiple times for batched datasets).', multiple=True)
 @click.option('--test-path', required=True, help='Test dataset in pickle.')
 @click.option('--output-path', required=True, help='output folder in which to save models and reports.')
 @click.option('--only', type=str, default=None, help='Comma separated list of models to train (only these one are trained).')
@@ -94,9 +95,12 @@ def main(train_path, test_path, output_path, only):
 
     print('loading dataset...')
     datasets = {}
-    train_dataset = train_path
+    train_dataset = ','.join(train_path)
     dev_dataset = test_path
-    datasets[train_dataset] = pd.read_pickle(train_dataset)
+    datasets[train_dataset] = pd.DataFrame()
+    for batch_path in tqdm(train_dataset):
+        train_batch = pd.read_pickle(batch_path)
+        datasets[train_dataset] = pd.concat([datasets[train_dataset], train_batch])
     datasets[dev_dataset] = pd.read_pickle(dev_dataset)
     print('loaded...')
 
@@ -123,6 +127,17 @@ def main(train_path, test_path, output_path, only):
             'y': 'labels',
         },
         {
+            'name': 'nilp_under_bi_max_secondiff',
+            'train': train_dataset,
+            'test': dev_dataset,
+            'sampling': 'undersample',
+            'features':  [
+                    'max',
+                    'secondiff'
+                ],
+            'y': 'labels',
+        },
+        {
             'name': 'nilp_under_bi_max_levenshtein',
             'train': train_dataset,
             'test': dev_dataset,
@@ -130,7 +145,6 @@ def main(train_path, test_path, output_path, only):
             'features':  [
                     'max',
                     'levenshtein'
-                    # no cross levenshtein
                 ],
             'y': 'labels',
         },
@@ -142,7 +156,6 @@ def main(train_path, test_path, output_path, only):
             'features':  [
                     'max',
                     'jaccard'
-                    # no cross levenshtein
                 ],
             'y': 'labels',
         },
@@ -154,7 +167,6 @@ def main(train_path, test_path, output_path, only):
             'features':  [
                     'max',
                     'stdev',
-                    # no cross levenshtein
                 ],
             'y': 'labels',
         },
@@ -168,7 +180,6 @@ def main(train_path, test_path, output_path, only):
                     'mean',
                     'median',
                     'stdev',
-                    # no cross levenshtein
                 ],
             'y': 'labels',
         },
@@ -181,7 +192,6 @@ def main(train_path, test_path, output_path, only):
                     'max',
                     'levenshtein',
                     'jaccard',
-                    # no cross levenshtein
                 ],
             'y': 'labels',
         },
@@ -194,7 +204,6 @@ def main(train_path, test_path, output_path, only):
                     'max',
                     'levenshtein',
                     'jaccard',
-                    # no cross levenshtein
                 ],
             'y': 'labels',
         },
@@ -207,7 +216,6 @@ def main(train_path, test_path, output_path, only):
                     'max',
                     'stdev',
                     'levenshtein',
-                    # no cross levenshtein
                 ],
             'y': 'labels',
         },
@@ -220,7 +228,6 @@ def main(train_path, test_path, output_path, only):
                     'max',
                     'stdev',
                     'jaccard',
-                    # no cross levenshtein
                 ],
             'y': 'labels',
         },
@@ -234,7 +241,6 @@ def main(train_path, test_path, output_path, only):
                     'stdev',
                     'levenshtein',
                     'jaccard'
-                    # no cross levenshtein
                 ],
             'y': 'labels',
         },
@@ -249,7 +255,6 @@ def main(train_path, test_path, output_path, only):
                     'median',
                     'stdev',
                     'levenshtein'
-                    # no cross levenshtein
                 ],
             'y': 'labels',
         },
@@ -264,7 +269,6 @@ def main(train_path, test_path, output_path, only):
                     'median',
                     'stdev',
                     'jaccard'
-                    # no cross levenshtein
                 ],
             'y': 'labels',
         },
@@ -280,7 +284,6 @@ def main(train_path, test_path, output_path, only):
                     'stdev',
                     'levenshtein',
                     'jaccard'
-                    # no cross levenshtein
                 ],
             'y': 'labels',
         },
@@ -296,7 +299,6 @@ def main(train_path, test_path, output_path, only):
                     'stdev',
                     'levenshtein',
                     'jaccard'
-                    # no cross levenshtein
                 ],
             'y': 'labels',
         },
