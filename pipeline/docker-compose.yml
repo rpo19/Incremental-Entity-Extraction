@@ -12,7 +12,7 @@ services:
       - 127.0.0.1:5432:5432
 
   biencoder:
-    image: rpozzi/ibkp_biencoder
+    image: rpozzi/ikbp_biencoder
     # build:
     #   context: ./biencoder
     #   dockerfile: Dockerfile
@@ -32,7 +32,7 @@ services:
     command: python main.py --host 0.0.0.0 --port 80 --biencoder_model models/biencoder_wiki_large.bin --biencoder_config models/biencoder_wiki_large.json
 
   indexer:
-    image: rpozzi/ibkp_indexer
+    image: rpozzi/ikbp_indexer
     # build:
     #     context: ./indexer
     #     dockerfile: Dockerfile
@@ -42,21 +42,8 @@ services:
       - 127.0.0.1:30301:80
     command: python main.py --host 0.0.0.0 --port 80 --index hnsw:models/faiss_hnsw_index.pkl:10:r,flat:models/faiss_flat_kbp_index.pkl:20:rw --postgres 'postgres://postgres:$POSTGRES_PASSWORD@postgres:5432/postgres' --vector-size 1024 --language en
 
-  nilcluster:
-    image: rpozzi/ibkp_nilcluster
-    # build:
-    #     context: ./nilcluster
-    #     dockerfile: Dockerfile
-    volumes:
-      - ./models:/home/app/models
-    ports:
-      - 127.0.0.1:30305:80
-    environment:
-      - PYTHONPATH=/path/to/EntityClustering
-    command: python __main__.py --host 0.0.0.0 --port 80
-
   nilpredictor:
-    image: rpozzi/ibkp_nilpredictor
+    image: rpozzi/ikbp_nilpredictor
     # build:
     #     context: ./nilpredictor
     #     dockerfile: Dockerfile
@@ -66,3 +53,28 @@ services:
       - 127.0.0.1:30303:80
     command: python __main__.py --host 0.0.0.0 --port 80 --nil-bi-model models/nilp_bi_max_levenshtein_jaccard_model.pickle --nil-bi-features 'max_bi,levenshtein,jaccard'
 
+##### the clustering methods listen on the same port --> only one up
+
+  threestepclustering:
+    image: rpozzi/ikbp_threestepclustering
+    build:
+        context: ./threestepclustering
+        dockerfile: Dockerfile
+    volumes:
+      - ./models:/home/app/models
+    ports:
+      - 127.0.0.1:30305:80
+    environment:
+      - PYTHONPATH=/path/to/EntityClustering
+    command: python __main__.py --host 0.0.0.0 --port 80
+
+  greedyclustering:
+    image: rpozzi/ikbp_greedyclustering
+    build:
+        context: ./greedyclustering
+        dockerfile: Dockerfile
+    volumes:
+      - ./models:/home/app/models
+    ports:
+      - 127.0.0.1:30305:80
+    command: python __main__.py --host 0.0.0.0 --port 80
