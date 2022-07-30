@@ -305,6 +305,7 @@ dev_outdata.pickle
 
 Then run the study and train the models with:
 ```
+# if using the entire train set this script requires about 43G RAM
 python scripts/feature_ablation_study.py --train-path output/prepare_for_nil_study/train_0_outdata.pickle \
 --train-path output/prepare_for_nil_study/train_1_outdata.pickle \
 --train-path output/prepare_for_nil_study/train_2_outdata.pickle \

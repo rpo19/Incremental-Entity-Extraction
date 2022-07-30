@@ -27,7 +27,7 @@ import click
 @click.option('--only', type=str, default=None, help='Comma separated list of models to train (only these one are trained).')
 def main(train_path, test_path, output_path, only):
     """
-    Given a train and a test set this script trains several Logistic regression models
+    Given a train (eventually divided in multiple files) and a test set this script trains several Logistic regression models
     for NIL prediction that use several combination of features and evaluates
     them on the given test set.
 
@@ -94,11 +94,13 @@ def main(train_path, test_path, output_path, only):
     os.makedirs(outpath, exist_ok=True)
 
     print('loading dataset...')
+    print(train_path)
     datasets = {}
     train_dataset = ','.join(train_path)
     dev_dataset = test_path
     datasets[train_dataset] = pd.DataFrame()
-    for batch_path in tqdm(train_dataset):
+    for batch_path in tqdm(train_path):
+        print('loading', batch_path)
         train_batch = pd.read_pickle(batch_path)
         datasets[train_dataset] = pd.concat([datasets[train_dataset], train_batch])
     datasets[dev_dataset] = pd.read_pickle(dev_dataset)
@@ -134,6 +136,19 @@ def main(train_path, test_path, output_path, only):
             'features':  [
                     'max',
                     'secondiff'
+                ],
+            'y': 'labels',
+        },
+        {
+            'name': 'nilp_under_bi_max_secondiff_levenshtein_jaccard',
+            'train': train_dataset,
+            'test': dev_dataset,
+            'sampling': 'undersample',
+            'features':  [
+                    'max',
+                    'secondiff',
+                    'levenshtein',
+                    'jaccard'
                 ],
             'y': 'labels',
         },
