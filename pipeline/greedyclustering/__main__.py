@@ -50,8 +50,10 @@ async def cluster_mention(item: Item):
     current_encodings = [vector_decode(e) for e in item.embeddings]
 
     # compute dot product (BLINK is trained on dot product) between embeddings
-    current_encodings = np.array(current_encodings)
-    scores = np.matmul(current_encodings, current_encodings.transpose())
+    current_encodings_np = np.array(current_encodings)
+    scores = np.matmul(current_encodings_np, current_encodings_np.transpose())
+
+    current_encodings = dict(zip(item.ids, current_encodings))
 
     # clustering
     cluster_ids = cluster(scores, args.threshold)
@@ -67,14 +69,14 @@ async def cluster_mention(item: Item):
         clusters[cluster_id]['mentions'].append(item.mentions[i])
         clusters[cluster_id]['mentions_id'].append(item.ids[i])
 
-    for key, cluster in clusters.items():
+    for key, current_cluster in clusters.items():
         # title
-        cluster['title'] = pd.Series(cluster['mentions']).value_counts().index[0]
-        cluster_encodings = current_encodings[cluster['mention_ids']]
-        cluster['center'] = KMedoids(n_clusters=1).fit(cluster_encodings).cluster_centers_
-        cluster['nelements'] = len(cluster['mentions'])
+        current_cluster['title'] = pd.Series(current_cluster['mentions']).value_counts().index[0]
+        cluster_encodings = [current_encodings[i] for i in current_cluster['mentions_id']]
+        current_cluster['center'] = vector_encode(KMedoids(n_clusters=1).fit(cluster_encodings).cluster_centers_)
+        current_cluster['nelements'] = len(current_cluster['mentions'])
 
-    return clusters
+    return list(clusters.values())
 
 
 if __name__ == '__main__':
@@ -86,7 +88,7 @@ if __name__ == '__main__':
         "--port", type=int, default="30305", help="port to listen at",
     )
     parser.add_argument(
-        "--threshold", type=float, default=100.0, help="Threshold for greedy NN clustering",
+        "--threshold", type=float, default=80.98388671875, help="Threshold for greedy NN clustering",
     )
 
     args = parser.parse_args()
