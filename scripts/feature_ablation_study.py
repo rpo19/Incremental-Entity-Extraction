@@ -140,10 +140,34 @@ def main(train_path, test_path, output_path, only):
             'y': 'labels',
         },
         {
+            'name': 'nilp_bi_max_secondiff',
+            'train': train_dataset,
+            'test': dev_dataset,
+            'sampling': 'no',
+            'features':  [
+                    'max',
+                    'secondiff'
+                ],
+            'y': 'labels',
+        },
+        {
             'name': 'nilp_under_bi_max_secondiff_levenshtein_jaccard',
             'train': train_dataset,
             'test': dev_dataset,
             'sampling': 'undersample',
+            'features':  [
+                    'max',
+                    'secondiff',
+                    'levenshtein',
+                    'jaccard'
+                ],
+            'y': 'labels',
+        },
+        {
+            'name': 'nilp_bi_max_secondiff_levenshtein_jaccard',
+            'train': train_dataset,
+            'test': dev_dataset,
+            'sampling': 'no',
             'features':  [
                     'max',
                     'secondiff',
