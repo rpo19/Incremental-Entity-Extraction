@@ -78,3 +78,14 @@ services:
     ports:
       - 127.0.0.1:30305:80
     command: python __main__.py --host 0.0.0.0 --port 80
+
+  featureclustering:
+    image: rpozzi/ikbp_featureclustering
+    build:
+        context: ./featureclustering
+        dockerfile: Dockerfile
+    volumes:
+      - ./models:/home/app/models
+    ports:
+      - 127.0.0.1:30305:80
+    command: python __main__.py --host 0.0.0.0 --port 80
