@@ -13,9 +13,9 @@ services:
 
   biencoder:
     image: rpozzi/ikbp_biencoder
-    # build:
-    #   context: ./biencoder
-    #   dockerfile: Dockerfile
+    build:
+      context: ./biencoder
+      dockerfile: Dockerfile
     volumes:
       - ./models:/home/app/models
     ports:
@@ -33,9 +33,9 @@ services:
 
   indexer:
     image: rpozzi/ikbp_indexer
-    # build:
-    #     context: ./indexer
-    #     dockerfile: Dockerfile
+    build:
+        context: ./indexer
+        dockerfile: Dockerfile
     volumes:
       - ./models:/home/app/models
     ports:
@@ -44,14 +44,14 @@ services:
 
   nilpredictor:
     image: rpozzi/ikbp_nilpredictor
-    # build:
-    #     context: ./nilpredictor
-    #     dockerfile: Dockerfile
+    build:
+        context: ./nilpredictor
+        dockerfile: Dockerfile
     volumes:
       - ./models:/home/app/models
     ports:
       - 127.0.0.1:30303:80
-    command: python __main__.py --host 0.0.0.0 --port 80 --nil-bi-model models/nilp_bi_max_levenshtein_jaccard_model.pickle --nil-bi-features 'max_bi,levenshtein,jaccard'
+    command: python __main__.py --host 0.0.0.0 --port 80 --nil-bi-model models/nilp_bi_max_secondiff_model.pickle --nil-bi-features 'max_bi,secondiff'
 
 ##### the clustering methods listen on the same port --> only one up
 
