@@ -340,6 +340,7 @@ def run_batch(batch, data, no_add, save_path, prepare_for_nil_prediction_train_f
 
     global added_entities
     global prev_clusters
+    global dropped
 
     # necessary for evaluation
     prev_added_entities = added_entities.copy()
@@ -453,13 +454,15 @@ def run_batch(batch, data, no_add, save_path, prepare_for_nil_prediction_train_f
                 for i in range(prev_len - len(x['candidates'])):
                     x['candidates'].append(worst)
                 assert len(x['candidates']) == prev_len
+                return x['candidates']
             else:
                 # if not found and not nil: drop
                 dropped += 1
                 return None
 
         data['linking_found_at'] = data.apply(eval_linking_helper, axis=1)
-        data['candidates'] = data.apply(correct_linking_candidates)
+        data['candidates'] = data.apply(correct_linking_candidates, axis=1)
+
         data = data.dropna(subset='candidates')
 
         report['dropped'].append(dropped)
@@ -610,7 +613,7 @@ def run_batch(batch, data, no_add, save_path, prepare_for_nil_prediction_train_f
             cluster['mentions'] = x['mention'].tolist()
             cluster['mention_ids'] = x.index.tolist()
             cluster['title'] = pd.Series(cluster['mentions']).value_counts().index[0]
-            cluster['center'] = KMedoids(n_clusters=1).fit(x['encoding']).cluster_centers_
+            cluster['center'] = vector_encode(KMedoids(n_clusters=1).fit(np.array([vector_decode(y) for y in x['encoding']])).cluster_centers_)
             cluster['nelements'] = len(cluster['mentions'])
             
         clusters = nil_mentions.groupby('Wikipedia_ID').apply(cluster_helper)
@@ -787,10 +790,11 @@ def main(no_add, save_path, no_reset, report, batches, no_incremental, prepare_f
         if not no_incremental:
             incremental_overall = report_df.mean(numeric_only=True)
             incremental_overall['batch'] = 'incremental_overall'
-            incremental_overall['overall_correct'] = report_df['overall_correct'].sum()
+            if 'overall_correct' in report_df:
+                incremental_overall['overall_correct'] = report_df['overall_correct'].sum()
             incremental_overall['size'] = report_df['size'].sum()
-            incremental_overall['overall_accuracy'] = incremental_overall['overall_correct'] / incremental_overall['size']
-            incremental_overall
+            if 'overall_accuracy' in report_df:
+                incremental_overall['overall_accuracy'] = incremental_overall['overall_correct'] / incremental_overall['size']
 
             report_df = report_df.append(incremental_overall, ignore_index=True)
 
