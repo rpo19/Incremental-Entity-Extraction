@@ -23,6 +23,7 @@ class Candidate(BaseModel):
 class Features(BaseModel):
     max_bi: Optional[float]
     max_cross: Optional[float]
+    secondiff: Optional[float]
     # text similarities
     title: Optional[str]
     mention: Optional[str]
@@ -79,7 +80,8 @@ async def run(input: List[Features]):
             stats = {
                 'mean': statistics.mean(scores),
                 'median': statistics.median(scores),
-                'stdev': statistics.stdev(scores)
+                'stdev': statistics.stdev(scores),
+                'secondiff': scores[0] - scores[1]
             }
 
             for i,v in stats.items():
