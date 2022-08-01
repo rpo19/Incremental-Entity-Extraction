@@ -86,6 +86,7 @@ services:
         dockerfile: Dockerfile
     volumes:
       - ./models:/home/app/models
+      - ./featureclustering/__main__.py:/home/app/__main__.py
     ports:
       - 127.0.0.1:30305:80
-    command: python __main__.py --host 0.0.0.0 --port 80
+    command: python __main__.py --host 0.0.0.0 --port 80 --threshold 0.984375

@@ -77,6 +77,7 @@ def score(
 @app.post('/api/nilcluster')
 async def cluster_mention(item: Item):
     global args
+    global vectorizers
 
     total_clusters = []
     current_mentions = item.mentions
@@ -93,10 +94,7 @@ async def cluster_mention(item: Item):
     mentions = item.mentions
     contexts = [left+' '+right for left, right in zip(item.context_left, item.context_right)]
 
-    # load vectorizer from disk
-    vectorizers = pickle.load('/home/app/models/vectorizer-incremental-dataset-dev100')
-
-    current_encodings = np.array(current_encodings)
+    current_encodings = dict(zip(item.ids, current_encodings))
     scores = score(mentions, contexts, vectorizers)
 
     # clustering
@@ -105,6 +103,7 @@ async def cluster_mention(item: Item):
     clusters = {}
 
     for i, cluster_id in enumerate(cluster_ids):
+        cluster_id = int(cluster_id)
         if cluster_id not in clusters:
             clusters[cluster_id] = {}
             clusters[cluster_id]['mentions'] = []
@@ -113,14 +112,14 @@ async def cluster_mention(item: Item):
         clusters[cluster_id]['mentions'].append(item.mentions[i])
         clusters[cluster_id]['mentions_id'].append(item.ids[i])
 
-    for key, cluster in clusters.items():
+    for key, current_cluster in clusters.items():
         # title
-        cluster['title'] = pd.Series(cluster['mentions']).value_counts().index[0]
-        cluster_encodings = current_encodings[cluster['mention_ids']]
-        cluster['center'] = KMedoids(n_clusters=1).fit(cluster_encodings).cluster_centers_
-        cluster['nelements'] = len(cluster['mentions'])
+        current_cluster['title'] = pd.Series(current_cluster['mentions']).value_counts().index[0]
+        cluster_encodings = [current_encodings[i] for i in current_cluster['mentions_id']]
+        current_cluster['center'] = vector_encode(KMedoids(n_clusters=1).fit(cluster_encodings).cluster_centers_)
+        current_cluster['nelements'] = len(current_cluster['mentions'])
 
-    return clusters
+    return list(clusters.values())
 
 
 if __name__ == '__main__':
@@ -132,8 +131,12 @@ if __name__ == '__main__':
         "--port", type=int, default="30305", help="port to listen at",
     )
     parser.add_argument(
-        "--threshold", type=float, default=100.0, help="Threshold for greedy NN clustering",
+        "--threshold", type=float, default=0.984375, help="Threshold for greedy NN clustering",
     )
+
+    # load vectorizer from disk
+    with open('/home/app/models/vectorizer-incremental-dataset-dev100', 'rb') as fd:
+        vectorizers = pickle.load(fd)
 
     args = parser.parse_args()
 

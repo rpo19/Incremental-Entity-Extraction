@@ -546,7 +546,9 @@ def run_batch(batch, data, no_add, save_path, prepare_for_nil_prediction_train_f
     res_nilcluster = requests.post(nilcluster, json={
             'ids': nil_mentions.index.tolist(),
             'mentions': nil_mentions[mention].values.tolist(),
-            'encodings': nil_mentions['encoding'].values.tolist()
+            'encodings': nil_mentions['encoding'].values.tolist(),
+            'context_left': nil_mentions['context_left'].values.tolist(),
+            'context_right': nil_mentions['context_right'].values.tolist(),
         })
 
     if not res_nilcluster.ok:
