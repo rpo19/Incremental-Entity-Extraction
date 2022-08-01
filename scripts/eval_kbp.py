@@ -154,9 +154,6 @@ def sparse_from_set(clusters, total):
     M = len(clusters)
     N = total
 
-    import pdb
-    pdb.set_trace()
-
     return sparse.csr_matrix((data, (row_ind, col_ind)), (M,N))
         
 
@@ -592,9 +589,6 @@ def run_batch(batch, data, no_add, save_path, prepare_for_nil_prediction_train_f
     pred_clusters = dict(merged.groupby('_cluster_id').apply(lambda x: (str(x['_cluster_id'].values[0]), set(x['_idx']))).values)
 
     true_clusters = dict(merged.groupby('Wikipedia_ID').apply(lambda x: (str(x['Wikipedia_ID'].values[0]), set(x['_idx']))).values)
-
-    import pdb
-    pdb.set_trace()
 
     total = sum(len(x) for x in true_clusters.values())
     assert total == sum(len(x) for x in pred_clusters.values())
