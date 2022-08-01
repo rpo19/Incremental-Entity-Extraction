@@ -40,6 +40,199 @@ added_entities = pd.DataFrame()
 # clusters with multiple modes
 prev_clusters = pd.DataFrame()
 
+
+##### clustering metrics https://github.com/rloganiv/streaming-cdc/
+
+import collections
+import json
+import statistics
+
+import scipy.sparse as sparse
+from scipy.optimize import linear_sum_assignment
+
+
+def _get_allowed_mids(train, test, choice):
+    seen_ids = set()
+    with open(train, 'r') as f:
+        for line in f:
+            data = json.loads(line)
+            seen_ids.add(data['entity_id'])
+    allowed_mids = set()
+    with open(test, 'r') as f:
+        for mid, line in enumerate(f):
+            data = json.loads(line)
+            seen = data['entity_id'] in seen_ids
+            if seen and choice == 'seen':
+                allowed_mids.add(mid)
+            elif not seen and choice == 'unseen':
+                allowed_mids.add(mid)
+    return allowed_mids
+
+
+def _create_muc_lookup(clusters):
+    out = {}
+    for cluster_id, cluster in clusters.items():
+        for element in list(cluster):
+            out[element] = cluster_id
+    return out
+
+
+def _create_cluster_lookup(clusters):
+    out = {}
+    for cluster in clusters.values():
+        for element in list(cluster):
+            out[element] = cluster
+    return out
+
+
+def muc(
+    true_clusters,
+    pred_clusters,
+):
+    true_muc_lookup = _create_muc_lookup(true_clusters)
+    pred_muc_lookup = _create_muc_lookup(pred_clusters)
+
+    precision_numerator = 0
+    precision_denominator = 0
+    for pred_cluster in pred_clusters.values():
+        size = len(pred_cluster)
+        partitions = len(set(true_muc_lookup[int(i)] for i in pred_cluster))
+        precision_numerator += size - partitions
+        precision_denominator += size - 1
+    muc_precision = precision_numerator / (precision_denominator + 1e-13)
+    print(f'MUC Precision: {muc_precision}')
+
+    recall_numerator = 0
+    recall_denominator = 0
+    for true_cluster in true_clusters.values():
+        size = len(true_cluster)
+        partitions = len(set(pred_muc_lookup[i] for i in true_cluster))
+        recall_numerator += size - partitions
+        recall_denominator += size - 1
+    muc_recall = recall_numerator / (recall_denominator + 1e-13)
+    print(f'MUC Recall: {muc_recall}')
+
+    muc_f1 = 2 * muc_precision * muc_recall / (muc_precision + muc_recall + 1e-13)
+    print(f'MUC F1: {muc_f1}')
+
+    return muc_precision, muc_recall, muc_f1
+
+
+def b3(
+    true_clusters,
+    pred_clusters,
+    total,
+):
+    true_lookup = _create_cluster_lookup(true_clusters)
+    pred_lookup = _create_cluster_lookup(pred_clusters)
+
+    # Now do B-Cubed!
+    b3_precision = 0
+    b3_recall = 0
+    for i in true_lookup.keys():
+        numerator = len(true_lookup[i] & pred_lookup[i])
+        b3_precision += numerator / len(pred_lookup[i])
+        b3_recall += numerator / len(true_lookup[i])
+    b3_precision /= total
+    b3_recall /= total
+    b3_f1 = 2 * b3_precision * b3_recall / (b3_precision + b3_recall)
+    print(f'B3 Precision: {b3_precision}')
+    print(f'B3 Recall: {b3_recall}')
+    print(f'B3 F1: {b3_f1}')
+    return b3_precision, b3_recall, b3_f1
+
+
+def sparse_from_set(clusters, total):
+    row_ind = []
+    col_ind = []
+    data = []
+    for i, cluster in enumerate(clusters.values()):
+        for j in cluster:
+            row_ind.append(i)
+            col_ind.append(j)
+            data.append(1)
+    M = len(clusters)
+    N = total
+
+    import pdb
+    pdb.set_trace()
+
+    return sparse.csr_matrix((data, (row_ind, col_ind)), (M,N))
+        
+
+def phi_4(k, r):
+    """
+    k : (keys, ents)
+    r : (responses, ents)
+    """
+    intersections = k * r.transpose() # (keys, responses)
+    k_counts = k.sum(axis=-1).reshape(-1, 1)
+    r_counts = r.sum(axis=-1).reshape(1, -1)
+    score = 2 * intersections / (k_counts + r_counts)
+    return score
+
+
+def ceaf_e(
+    true_clusters,
+    pred_clusters,
+    total,
+):
+    # Now do CEAF!
+    k = sparse_from_set(true_clusters, total)
+    r = sparse_from_set(pred_clusters, total)
+    scores = phi_4(k, r)
+    row_opt, col_opt = linear_sum_assignment(scores, maximize=True)
+    numerator = scores[row_opt, col_opt].sum()
+    ceaf_precision = numerator / len(true_clusters)
+    ceaf_recall = numerator / len(pred_clusters)
+    ceaf_f1 = 2 * ceaf_precision * ceaf_recall / (ceaf_precision + ceaf_recall)
+    print(f'CEAF-e Precision: {ceaf_precision}')
+    print(f'CEAF-e Recall: {ceaf_recall}')
+    print(f'CEAF-e F1: {ceaf_f1}')
+    return ceaf_precision, ceaf_recall, ceaf_f1
+
+
+def eval_clustering(true_clusters, pred_clusters, total):
+    """
+    true_clusters: {cluster_id: list(elements)}
+    pred_clusters: {cluster_id: list(elements)}
+    total: the number of mentions
+    """
+
+    median_size = statistics.median(len(x) for x in true_clusters.values())
+    print(f'True clusters: {len(true_clusters)}')
+    print(f'Median size: {median_size}')
+    print(f'Pred clusters: {len(pred_clusters)}')
+
+    muc_precision, muc_recall, muc_f1 = muc(true_clusters, pred_clusters)
+    b3_precision, b3_recall, b3_f1 = b3(true_clusters, pred_clusters, total)
+    ceaf_precision, ceaf_recall, ceaf_f1 = ceaf_e(true_clusters, pred_clusters, total)
+
+    cluster_eval_res = {
+        "muc_precision": muc_precision,
+        "muc_recall": muc_recall,
+        "muc_f1": muc_f1,
+        "b3_precision": b3_precision,
+        "b3_recall": b3_recall,
+        "b3_f1": b3_f1,
+        "ceaf_precision": ceaf_precision,
+        "ceaf_recall": ceaf_recall,
+        "ceaf_f1": ceaf_f1,
+        "pred_clusters_len": len(pred_clusters),
+        "evalcluster_mean": statistics.mean((muc_f1, b3_f1, ceaf_f1)),
+        # statistics.median(len(x) for x in pred_clusters),
+    }
+
+    line = '\t'.join('%0.3f' % x for x in cluster_eval_res.values())
+    print(f'{line}')
+
+    return cluster_eval_res
+
+
+
+
+#####
+
 def vector_encode(v):
     s = base64.b64encode(v).decode()
     return s
@@ -150,6 +343,9 @@ def run_batch(batch, data, no_add, save_path, prepare_for_nil_prediction_train_f
 
     global added_entities
     global prev_clusters
+
+    # necessary for evaluation
+    prev_added_entities = added_entities.copy()
 
     print('Run batch', batch)
 
@@ -342,9 +538,6 @@ def run_batch(batch, data, no_add, save_path, prepare_for_nil_prediction_train_f
     if correct_steps:
         data['is_nil'] = data['should_be_nil']
 
-    # necessary for evaluation
-    prev_added_entities = added_entities.copy()
-
     # TODO consider correcting added_entities?
     added_entities = pd.concat([added_entities, pd.DataFrame(data.query('is_nil')['Wikipedia_ID'].unique(), columns=['Wikipedia_ID'])]).drop_duplicates()
     added_entities.set_index('Wikipedia_ID', drop=False, inplace=True)
@@ -372,11 +565,13 @@ def run_batch(batch, data, no_add, save_path, prepare_for_nil_prediction_train_f
 
     ## NIL clustering
     exploded_clusters = clusters.explode(['mentions_id', 'mentions'])
+    exploded_clusters['_cluster_id'] = exploded_clusters.index
+    exploded_clusters['_idx'] = range(exploded_clusters.shape[0])
     merged = data.merge(exploded_clusters, left_index=True, right_on='mentions_id')
 
     # https://github.com/hhromic/python-bcubed
     keys = [str(x) for x in exploded_clusters['mentions_id']]
-    values = [set([str(x)]) for x in exploded_clusters.index]
+    values = [set([x]) for x in exploded_clusters.index]
     cdict = dict(zip(keys, values))
 
     keysGold = [str(x) for x in merged['mentions_id']]
@@ -385,6 +580,27 @@ def run_batch(batch, data, no_add, save_path, prepare_for_nil_prediction_train_f
     ldict = dict(zip(keysGold, valuesGold))
     report['nil_clustering_bcubed_precision'] = bcubed.precision(cdict, ldict)
     report['nil_clustering_bcubed_recall'] = bcubed.recall(cdict, ldict)
+
+    """
+    true_clusters: {cluster_id: list(elements)}
+    pred_clusters: {cluster_id: list(elements)}
+    total: the number of mentions
+    """
+
+    # pred_clusters = dict(zip(clusters.index.astype(str), clusters['mentions_id'].apply(lambda x: set(x))))
+
+    pred_clusters = dict(merged.groupby('_cluster_id').apply(lambda x: (str(x['_cluster_id'].values[0]), set(x['_idx']))).values)
+
+    true_clusters = dict(merged.groupby('Wikipedia_ID').apply(lambda x: (str(x['Wikipedia_ID'].values[0]), set(x['_idx']))).values)
+
+    import pdb
+    pdb.set_trace()
+
+    total = sum(len(x) for x in true_clusters.values())
+    assert total == sum(len(x) for x in pred_clusters.values())
+    assert total == exploded_clusters.shape[0]
+
+    report['eval_clustering'] = eval_clustering(true_clusters=true_clusters, pred_clusters=pred_clusters, total=total)
 
     ###### eval clustering >
 
@@ -525,6 +741,10 @@ def explode_nil(row, column='nil_prediction', label=''):
 def main(no_add, save_path, no_reset, report, batches, no_incremental, prepare_for_nil_pred, correct_steps):
     print('Batches', batches)
     outreports = []
+    
+    if os.path.isfile(report):
+        print('Report already exists, change name!')
+        sys.exit(1)
 
     reset = not no_reset
 
@@ -552,7 +772,7 @@ def main(no_add, save_path, no_reset, report, batches, no_incremental, prepare_f
         print('Loading and combining batches')
         datas = list(map(lambda x: pd.read_json(x, lines=True), batches))
         data = pd.concat(datas, ignore_index=True)
-        outreport = run_batch("no_incremental", data, no_add, save_path, prepare_for_nil_pred)
+        outreport = run_batch("no_incremental", data, no_add, save_path, prepare_for_nil_pred, correct_steps)
         outreports.append(outreport)
     else:
         for batch in tqdm(batches):
