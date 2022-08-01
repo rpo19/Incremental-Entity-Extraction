@@ -616,7 +616,7 @@ def run_batch(batch, data, no_add, save_path, prepare_for_nil_prediction_train_f
         clusters = nil_mentions.groupby('Wikipedia_ID').apply(cluster_helper)
         
 
-    if False and not no_add:
+    if not no_add:
         # populate with new entities
         print('Populating rw index with new entities')
 
@@ -753,7 +753,7 @@ def main(no_add, save_path, no_reset, report, batches, no_incremental, prepare_f
         assert os.path.isfile(batch)
 
     # reset kbp
-    if False and reset:
+    if reset:
         print('Resetting RW index...')
         res_reset = requests.post(indexer_reset, data={})
 
