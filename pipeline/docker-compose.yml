@@ -31,16 +31,16 @@ services:
     ########### GPU end #############
     command: python main.py --host 0.0.0.0 --port 80 --biencoder_model models/biencoder_wiki_large.bin --biencoder_config models/biencoder_wiki_large.json
 
-    # indexer:
-    #   image: rpozzi/ikbp_indexer
-    #   build:
-    #       context: ./indexer
-    #       dockerfile: Dockerfile
-    #   volumes:
-    #     - ./models:/home/app/models
-    #   ports:
-    #     - 127.0.0.1:30301:80
-    #   command: python main.py --host 0.0.0.0 --port 80 --index hnsw:models/faiss_hnsw_index.pkl:10:r,flat:models/faiss_flat_kbp_index.pkl:20:rw --postgres 'postgres://postgres:$POSTGRES_PASSWORD@postgres:5432/postgres' --vector-size 1024 --language en
+  indexer:
+    image: rpozzi/ikbp_indexer
+    build:
+        context: ./indexer
+        dockerfile: Dockerfile
+    volumes:
+      - ./models:/home/app/models
+    ports:
+      - 127.0.0.1:30301:80
+    command: python main.py --host 0.0.0.0 --port 80 --index hnsw:models/faiss_hnsw_index.pkl:10:r,flat:models/faiss_flat_kbp_index.pkl:20:rw --postgres 'postgres://postgres:$POSTGRES_PASSWORD@postgres:5432/postgres' --vector-size 1024 --language en
 
   nilpredictor:
     image: rpozzi/ikbp_nilpredictor
@@ -86,7 +86,6 @@ services:
         dockerfile: Dockerfile
     volumes:
       - ./models:/home/app/models
-      - ./featureclustering/__main__.py:/home/app/__main__.py
     ports:
       - 127.0.0.1:30305:80
     command: python __main__.py --host 0.0.0.0 --port 80 --threshold 0.984375
