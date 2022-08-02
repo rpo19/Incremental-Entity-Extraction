@@ -155,7 +155,7 @@ def sparse_from_set(clusters, total):
     N = total
 
     return sparse.csr_matrix((data, (row_ind, col_ind)), (M,N))
-        
+
 
 def phi_4(k, r):
     """
@@ -442,6 +442,9 @@ def run_batch(batch, data, no_add, save_path, prepare_for_nil_prediction_train_f
             # put correct candidate first
             # remove candidates whose score is higher than the correct
             # repeat the worst candidates to reach the same size of candidates
+            if x['NIL']:
+                # do nothing if NIL
+                return x['candidates']
             if x['linking_found_at'] > 0:
                 idx = x['linking_found_at'] - 1
                 prev_len = len(x['candidates'])
@@ -615,9 +618,9 @@ def run_batch(batch, data, no_add, save_path, prepare_for_nil_prediction_train_f
             cluster['title'] = pd.Series(cluster['mentions']).value_counts().index[0]
             cluster['center'] = vector_encode(KMedoids(n_clusters=1).fit(np.array([vector_decode(y) for y in x['encoding']])).cluster_centers_)
             cluster['nelements'] = len(cluster['mentions'])
-            
+
         clusters = nil_mentions.groupby('Wikipedia_ID').apply(cluster_helper)
-        
+
 
     if not no_add:
         # populate with new entities
@@ -740,7 +743,7 @@ def explode_nil(row, column='nil_prediction', label=''):
 def main(no_add, save_path, no_reset, report, batches, no_incremental, prepare_for_nil_pred, correct_steps):
     print('Batches', batches)
     outreports = []
-    
+
     if os.path.isfile(report):
         print('Report already exists, change name!')
         sys.exit(1)
