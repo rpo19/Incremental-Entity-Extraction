@@ -614,12 +614,13 @@ def run_batch(batch, data, no_add, save_path, prepare_for_nil_prediction_train_f
         def cluster_helper(x):
             cluster = {}
             cluster['mentions'] = x['mention'].tolist()
-            cluster['mention_ids'] = x.index.tolist()
+            cluster['mentions_id'] = x.index.tolist()
             cluster['title'] = pd.Series(cluster['mentions']).value_counts().index[0]
             cluster['center'] = vector_encode(KMedoids(n_clusters=1).fit(np.array([vector_decode(y) for y in x['encoding']])).cluster_centers_)
             cluster['nelements'] = len(cluster['mentions'])
+            return cluster
 
-        clusters = nil_mentions.groupby('Wikipedia_ID').apply(cluster_helper)
+        clusters = pd.DataFrame(nil_mentions.groupby('Wikipedia_ID').apply(cluster_helper).values.tolist())
 
 
     if not no_add:
