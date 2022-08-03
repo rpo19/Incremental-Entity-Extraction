@@ -80,7 +80,7 @@ pip install -r requirements.txt
 Download the dataset or create it starting from Wikilinks Unseen-Mentions.
 
 ## Download the dataset
-Download from https://figshare.com/articles/dataset/Incremental_Entity_Extraction/19711624 and extract it into the main folder of the project. You should see something like this:
+Download from [here](https://drive.google.com/drive/folders/1QmLhKpVwG_s9NVawsTpwrSB2sbdsPI9W?usp=sharing) and extract it into the main folder of the project. You should see something like this:
 ```
 .
 ├── incremental_dataset
@@ -131,7 +131,7 @@ We need to download these files and put them in the models directory:
 - the information about the entities in the index (from Meta Research):
     - http://dl.fbaipublicfiles.com/BLINK/entity.jsonl
 - the NIL prediction model:
-    - the file `nilp_bi_max_levenshtein_jaccard_model.pickle` from https://figshare.com/articles/dataset/Incremental_Entity_Extraction/19711624
+    - the file `nilp_bi_max_secondiff_model.pickle` from [here](https://drive.google.com/drive/folders/1QmLhKpVwG_s9NVawsTpwrSB2sbdsPI9W?usp=sharing)
 
 Once downloaded the model folder should look like this:
 ```
@@ -140,7 +140,7 @@ pipeline/models/biencoder_wiki_large.bin                        (2.5G)
 pipeline/models/biencoder_wiki_large.json
 pipeline/models/entity.jsonl                                    (3.2G)
 pipeline/models/faiss_hnsw_index.pkl                            (29G)
-pipeline/models/nilp_bi_max_levenshtein_jaccard_model.pickle
+pipeline/models/nilp_bi_max_secondiff_model.pickle
 ```
 
 ### Prepare environment variables
