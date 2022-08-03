@@ -344,28 +344,3 @@ We suggest to use GPU for evaluating a dataset, while to try the pipeline CPU sh
 
 # Licence
 This repository is MIT licensed. See the [LICENSE](LICENSE) file for details.
-
-# Cite
-## Cite the Source Code Repository
-```
-@article{Pozzi2022Source,
-    author = "Riccardo Pozzi and Federico Moiraghi and Matteo Palmonari and Fausto Lodi",
-    title = "{Incremental Entity Extraction Source Code}",
-    year = "2022",
-    month = "5",
-    url = "https://figshare.com/articles/software/Incremental_Entity_Extraction_Source_Code/19711810",
-    doi = "10.6084/m9.figshare.19711810.v1"
-}
-```
-
-## Cite the Dataset
-```
-@article{Pozzi2022Dataset,
-    author = "Riccardo Pozzi and Federico Moiraghi and Matteo Palmonari and Fausto Lodi",
-    title = "{Incremental Entity Extraction}",
-    year = "2022",
-    month = "5",
-    url = "https://figshare.com/articles/dataset/Incremental_Entity_Extraction/19711624",
-    doi = "10.6084/m9.figshare.19711624.v1"
-}
-```
