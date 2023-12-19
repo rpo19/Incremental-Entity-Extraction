@@ -12,6 +12,11 @@ with Background Knowledge and Entity Linking".
 
 Special thanks to Lorenzo Sasso (l.sasso2@campus.unimib.it) and Simone Monti (s.monti21@campus.unimib.it).
 
+## Citation
+```
+Riccardo Pozzi, Federico Moiraghi, Fausto Lodi, and Matteo Palmonari. 2023. Evaluation of Incremental Entity Extraction with Background Knowledge and Entity Linking. In Proceedings of the 11th International Joint Conference on Knowledge Graphs (IJCKG '22). Association for Computing Machinery, New York, NY, USA, 30–38. https://doi.org/10.1145/3579051.3579063
+```
+
 # Credits
 
 The Incremental Dataset is created starting from the WikilinksNED Unseen-Mentions from https://github.com/yasumasaonoe/ET4EL by Yasumasa Onoe and Greg Durrett.
